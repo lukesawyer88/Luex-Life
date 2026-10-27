@@ -5,13 +5,13 @@ Nothing was deleted: each one is switched off by default and a parent can switch
 Any of them can be brought back as a standard feature later.
 
 ## Family Calendar
+(Booking references and countdowns on events became standard on 27 Oct 2026: Bookings and Trips rely on them.)
 1. Change history on events (a plain "Added by" line stays; change alerts still go out).
 2. Comments on events.
 3. Weather (also needs a paid weather plan before launch).
 4. Routine timers and "finished early".
-5. Tickets and booking references on events (notes and files stay).
 6. Print the week.
-7. Countdowns and seasonal touches.
+7. The Christmas countdown in December (countdowns on events are standard).
 8. Handover notes for a day.
 9. Also changed: the two kinds of share link (babysitter and outsider) are now one "Share a link".
 

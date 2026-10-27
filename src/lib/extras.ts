@@ -14,9 +14,8 @@ export const EXTRAS: Extra[] = [
   { key: "cal.comments", module: "calendar", label: "Comments on events", hint: "Talk about an event under it" },
   { key: "cal.weather", module: "calendar", label: "Weather", hint: "The forecast on each day" },
   { key: "cal.timers", module: "calendar", label: "Routine timers", hint: "Timers on routine steps" },
-  { key: "cal.tickets", module: "calendar", label: "Tickets and bookings", hint: "Booking references and links on events" },
   { key: "cal.print", module: "calendar", label: "Print the week", hint: "A printable week" },
-  { key: "cal.countdowns", module: "calendar", label: "Countdowns", hint: "Countdowns and seasonal touches" },
+  { key: "cal.countdowns", module: "calendar", label: "Christmas countdown", hint: "\"12 sleeps to Christmas\" through December" },
   { key: "cal.handover", module: "calendar", label: "Handover notes", hint: "Notes for whoever's looking after the children that day" },
   // Family Board
   { key: "board.seen", module: "board", label: "Seen by", hint: "Who has seen each message" },

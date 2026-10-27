@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useExtra } from "@/lib/extras";
 import { friendlyError } from "@/lib/family";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
@@ -114,8 +113,8 @@ export function EventEditor({ open, onOpenChange, mode, onSaved }: { open: boole
   const [f, setF] = useState(init);
   const [typeTouched, setTypeTouched] = useState(false);
   const [more, setMore] = useState(false);
-  const showTickets = useExtra("cal.tickets");
-  const showCountdown = useExtra("cal.countdowns");
+  const showTickets = true; // booking references and links are standard (Bookings lists them)
+  const showCountdown = true; // countdowns on events are standard (trips use them)
   const [multiDay, setMultiDay] = useState(false);
   const [savePlace, setSavePlace] = useState(false);
   const [busy, setBusy] = useState(false);

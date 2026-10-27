@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, Camera, UserPlus } from "lucide-react";
+import { Camera, UserPlus } from "lucide-react";
 
 import { MemberAvatar } from "@/components/member-avatar";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
@@ -12,12 +12,22 @@ import { KidAsks } from "@/modules/kids/home-card";
 import { SchoolToday } from "@/modules/school/home-card";
 import { NextTrip } from "@/modules/trips/home-card";
 
-/** The cards from each module (each hides itself when there's nothing to show or the module is off) */
-function ModuleCards() {
+import { TodayOnHome } from "./home-today";
+
+/** The cards from each module (each hides itself when there's nothing to show or the module is off).
+ *  "urgent" are the ones waiting on someone right now; "rest" the others. */
+function ModuleCards({ part = "all" }: { part?: "all" | "urgent" | "rest" }) {
   return (
     <>
-      <MedicineNow />
-      <KidAsks />
+      {part !== "rest" ? <><MedicineNow /><KidAsks /></> : null}
+      {part === "urgent" ? null : <ModuleCardsRest />}
+    </>
+  );
+}
+
+function ModuleCardsRest() {
+  return (
+    <>
       <div className="mb-4"><WhatsForDinner compact /></div>
       <SchoolToday />
       <BinsToday />
@@ -48,10 +58,10 @@ export function HomePage() {
           <p className="text-sm text-muted-foreground">{today}</p>
         </div>
 
-        {/* on wide screens these cards sit in the side panel instead */}
-        <div className="lg:hidden">
-          <ModuleCards />
-        </div>
+        {/* on a phone: anything waiting on you, then today, then the rest; on wide screens the cards sit in the side panel */}
+        <div className="lg:hidden"><ModuleCards part="urgent" /></div>
+        <TodayOnHome />
+        <div className="lg:hidden"><ModuleCards part="rest" /></div>
 
         <h3 className="mb-2 text-sm font-semibold">Your family</h3>
         <ul className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
@@ -81,9 +91,6 @@ export function HomePage() {
       </RecordsWindow>
       <DetailWindow>
         <ModuleCards />
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold"><CalendarDays className="size-4" />Today</div>
-        <p className="text-sm">Nothing planned yet.</p>
-        <p className="mt-2 text-sm text-[var(--muted-foreground)]">Your family calendar is the next thing we're building. Everything planned for today will show up here, for each person.</p>
       </DetailWindow>
     </Windows>
   );

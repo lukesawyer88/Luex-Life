@@ -99,18 +99,18 @@ export function DayPanel({ dayK, occs, terms, weather, onOpen, onAdd, onTab, com
   );
 }
 
-/** "12 sleeps to Christmas" and any events marked with a countdown */
+/** Events marked with a countdown, and "12 sleeps to Christmas" in December when the seasonal extra is on */
 export function Countdowns() {
-  const on = useExtra("cal.countdowns");
-  return on ? <CountdownList /> : null;
+  const seasonal = useExtra("cal.countdowns");
+  return <CountdownList seasonal={seasonal} />;
 }
 
-function CountdownList() {
+function CountdownList({ seasonal }: { seasonal: boolean }) {
   const { family } = useFamilyState();
   const today = todayKey(family.timezone);
   const { occs } = useOccurrences(today, addDays(today, 120), []);
   const list = occs
-    .filter((o) => o.startDay > today && ((o.event.countdown && !o.virtual) || (o.virtual?.kind === "christmas" && today.slice(5, 7) === "12")))
+    .filter((o) => o.startDay > today && ((o.event.countdown && !o.virtual) || (seasonal && o.virtual?.kind === "christmas" && today.slice(5, 7) === "12")))
     .slice(0, 3);
   if (!list.length) return null;
   return (

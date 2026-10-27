@@ -1,9 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  Bath, BedDouble, BookOpen, Camera, Car, Check, Dog, Fish, Flower2, Hourglass, Loader2, Pencil, Plus, Shirt, ShoppingBasket, Sofa,
-  Sparkles, Star, Trash2, Undo2, Users, Utensils, WashingMachine, type LucideIcon,
-} from "lucide-react";
+import { Camera, Check, Hourglass, Loader2, Pencil, Plus, Sparkles, Star, Trash2, Undo2, Users } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -26,25 +23,8 @@ import { countBefore, datesBetween } from "./recurrence";
 import { addDays, shortDate, shortDay, todayKey, weekdayOf, weekStart } from "./time";
 import { Chip, Empty, Field, PeoplePicker, Sheet, Tabs } from "./ui";
 
-// ---------------------------------------------------------------- icons (stored by name)
-
-export const CHORE_ICONS: Record<string, LucideIcon> = {
-  sparkles: Sparkles, bed: BedDouble, utensils: Utensils, bin: Trash2, shirt: Shirt, dog: Dog, fish: Fish,
-  flower: Flower2, bath: Bath, book: BookOpen, shopping: ShoppingBasket, car: Car, sofa: Sofa, washing: WashingMachine,
-};
-export function choreIcon(name: string): LucideIcon {
-  return CHORE_ICONS[name] ?? Sparkles;
-}
-
-// ---------------------------------------------------------------- who does it on a day
-
-/** Who a chore is for on a day: 'each' = everyone listed, 'rotate' = whose turn it is, 'anyone' = null (first to do it) */
-export function choreAssignees(c: Chore, k: string): string[] | null {
-  if (c.mode === "anyone") return null;
-  if (!c.people.length) return [];
-  if (c.mode === "rotate") return [c.people[countBefore(c.rrule, c.starts_on, k) % c.people.length]];
-  return c.people;
-}
+export { CHORE_ICONS, choreAssignees, choreIcon } from "./chore-helpers";
+import { CHORE_ICONS, choreAssignees, choreIcon } from "./chore-helpers";
 
 function isDue(c: Chore, k: string) {
   return c.active && k >= c.starts_on && datesBetween(c.rrule, c.starts_on, k, k).length > 0;

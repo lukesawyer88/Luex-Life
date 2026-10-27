@@ -55,8 +55,8 @@ export function EventDetail({ occ, onEdit, onCopy, onWishList, onClosed }: Props
   const w = weather.data?.get(occ.startDay);
   const showHistory = useExtra("cal.history");
   const showComments = useExtra("cal.comments");
-  const showTickets = useExtra("cal.tickets");
-  const showCountdown = useExtra("cal.countdowns");
+  const showTickets = true; // booking references and links are standard (Bookings lists them)
+  const showCountdown = true; // countdowns on events are standard (trips use them)
   const [askDelete, setAskDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const today = todayKey(tz);
