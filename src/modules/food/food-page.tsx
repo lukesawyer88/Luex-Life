@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
+import { takeLinkParams } from "@/lib/link-params";
 import { Chip, Tabs } from "@/modules/calendar/ui";
 
 import { BudgetTab } from "./budget";
@@ -23,12 +24,11 @@ export type FoodTab = "plan" | "recipes" | "shopping" | "stock" | "lunches" | "t
 export type FoodTarget = { tab: FoodTab; recipeId?: string; planId?: string; listId?: string; day?: string };
 
 function fromUrl(): FoodTarget {
-  const p = new URLSearchParams(window.location.search);
+  const p = takeLinkParams();
   const tab = p.get("tab") as FoodTab | null;
   const t: FoodTarget = { tab: tab ?? "plan" };
   if (p.get("plan")) { t.tab = "plan"; t.planId = p.get("plan")!; }
   if (p.get("recipe")) { t.tab = "recipes"; t.recipeId = p.get("recipe")!; }
-  if ([...p.keys()].length) window.history.replaceState(null, "", window.location.pathname);
   return t;
 }
 

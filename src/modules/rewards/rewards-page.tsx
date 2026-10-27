@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
+import { takeLinkParams } from "@/lib/link-params";
 import { Tabs } from "@/modules/calendar/ui";
 
 import { ApprovalsTab } from "./approvals";
@@ -23,12 +24,11 @@ export type RewardTarget = { tab: RewardTab; memberId?: string; jobId?: string; 
 export type TabProps = { target: RewardTarget; onGo: (t: RewardTarget) => void };
 
 function fromUrl(): Partial<RewardTarget> {
-  const p = new URLSearchParams(window.location.search);
+  const p = takeLinkParams();
   const t: Partial<RewardTarget> = {};
   const tab = p.get("tab");
   if (tab === "approvals") t.tab = "approvals";
   if (tab === "jobs") t.tab = "us";
-  if ([...p.keys()].length) window.history.replaceState(null, "", window.location.pathname);
   return t;
 }
 

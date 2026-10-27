@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useExtra } from "@/lib/extras";
+import { takeLinkParams } from "@/lib/link-params";
 import { Tabs } from "@/modules/calendar/ui";
 
 import { BillsTab } from "./bills";
@@ -22,11 +23,10 @@ export type MoneyTarget = { tab: MoneyTab; billId?: string; paymentId?: string; 
 export type TabProps = { target: MoneyTarget; onGo: (t: MoneyTarget) => void };
 
 function fromUrl(): MoneyTarget {
-  const p = new URLSearchParams(window.location.search);
+  const p = takeLinkParams();
   const t: MoneyTarget = { tab: (p.get("tab") as MoneyTab | null) ?? "budget" };
   if (p.get("bill")) { t.tab = "bills"; t.billId = p.get("bill")!; }
   if (p.get("payment")) { t.tab = "payments"; t.paymentId = p.get("payment")!; }
-  if ([...p.keys()].length) window.history.replaceState(null, "", window.location.pathname);
   return t;
 }
 

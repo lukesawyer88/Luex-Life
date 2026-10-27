@@ -2,6 +2,7 @@ import { Images, LayoutGrid, ListChecks, MessagesSquare, MoreHorizontal, Noteboo
 import { useMemo, useState } from "react";
 
 import { useExtra } from "@/lib/extras";
+import { takeLinkParams } from "@/lib/link-params";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs } from "@/modules/calendar/ui";
@@ -32,14 +33,13 @@ export type BoardTarget = {
 };
 
 function fromUrl(): BoardTarget {
-  const p = new URLSearchParams(window.location.search);
+  const p = takeLinkParams();
   const tab = p.get("tab") as BoardTab | null;
   const t: BoardTarget = { tab: tab && TABS.includes(tab) ? tab : "home" };
   if (p.get("thread")) { t.tab = "chats"; t.threadId = p.get("thread")!; t.messageId = p.get("message") ?? undefined; }
   if (p.get("memory")) { t.tab = "journal"; t.memoryId = p.get("memory")!; }
   if (p.get("goal")) { t.tab = "goals"; t.goalId = p.get("goal")!; }
   if (p.get("prompt")) { t.tab = "journal"; t.promptId = p.get("prompt")!; }
-  if ([...p.keys()].length) window.history.replaceState(null, "", window.location.pathname);
   return t;
 }
 

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useFamilyState } from "@/lib/family-context";
+import { takeLinkParams } from "@/lib/link-params";
 import { Tabs } from "@/modules/calendar/ui";
 
 import { useSchoolLive, useSchoolSetup } from "./data";
@@ -17,11 +18,10 @@ export type SchoolTarget = { tab: SchoolTab; childId?: string; taskId?: string }
 export type TabProps = { target: SchoolTarget; onGo: (t: SchoolTarget) => void };
 
 function fromUrl(): Partial<SchoolTarget> {
-  const p = new URLSearchParams(window.location.search);
+  const p = takeLinkParams();
   const t: Partial<SchoolTarget> = {};
   const tab = p.get("tab");
   if (tab === "todo" || tab === "week" || tab === "people") t.tab = tab;
-  if ([...p.keys()].length) window.history.replaceState(null, "", window.location.pathname);
   return t;
 }
 

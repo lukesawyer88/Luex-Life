@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useFamilyState } from "@/lib/family-context";
 import { forgetPhoneCopies } from "@/lib/phone-copies";
+import { takeLinkParams } from "@/lib/link-params";
 import { Tabs } from "@/modules/calendar/ui";
 
 import { ChecklistTab } from "./checklist";
@@ -18,9 +19,8 @@ export type DocsTab = "papers" | "soon" | "checklist";
 export type DocsTabProps = { openId: string | null; onOpen: (id: string | null) => void; onAdd: (draft?: DocDraft) => void; onEdit: (d: Doc) => void };
 
 function fromUrl(): { doc?: string } {
-  const p = new URLSearchParams(window.location.search);
+  const p = takeLinkParams();
   const doc = p.get("doc") ?? undefined;
-  if ([...p.keys()].length) window.history.replaceState(null, "", window.location.pathname);
   return { doc };
 }
 
