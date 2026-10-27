@@ -1,0 +1,298 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Luex Life uses the same design system as Luex Work (copied 26 Oct 2026, so the two apps can drift apart safely).
+ * Black sidebar, white frame, cool grey-blue records window, white rows and tiles, warm cream
+ * detail window; dark mode: near-black frame, graphite windows, warm gold-brown detail, gold accent.
+ * All colours live here so modules never change for a new look.
+ */
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 28px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--status-blue);
+  --color-chart-2: var(--status-green);
+  --color-chart-3: var(--status-amber);
+  --color-chart-4: var(--status-red);
+  --color-chart-5: var(--muted-foreground);
+  --color-sidebar: var(--glass);
+  --color-sidebar-foreground: var(--foreground);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-primary-foreground: var(--primary-foreground);
+  --color-sidebar-accent: var(--glass-strong);
+  --color-sidebar-accent-foreground: var(--foreground);
+  --color-sidebar-border: var(--glass-border);
+  --color-sidebar-ring: var(--ring);
+
+  /* Glass and status tokens as Tailwind colours */
+  --color-glass: var(--glass);
+  --color-glass-strong: var(--glass-strong);
+  --color-glass-dark: var(--glass-dark);
+  --color-glass-border: var(--glass-border);
+  --color-status-blue: var(--status-blue);
+  --color-status-green: var(--status-green);
+  --color-status-amber: var(--status-amber);
+  --color-status-red: var(--status-red);
+  --color-status-blue-soft: var(--status-blue-soft);
+  --color-status-green-soft: var(--status-green-soft);
+  --color-status-amber-soft: var(--status-amber-soft);
+  --color-status-red-soft: var(--status-red-soft);
+}
+
+:root {
+  color-scheme: light;
+  --radius: 12px;
+
+  /* The frame and the windows */
+  --backdrop-base: #ffffff;
+  --frame: #ffffff;
+  --sidebar: #0d0d0f;
+  --sidebar-fg: #d8d8dc;
+  --sidebar-muted: #84848b;
+  --sidebar-hover: rgba(255, 255, 255, 0.06);
+  --sidebar-active: #efe3c6;
+  --sidebar-active-fg: #17140e;
+  --records: #e6ebf2;
+  --surface: #ffffff;
+  --surface-border: #e3e7ee;
+  --surface-shadow: 0 1px 2px rgba(20, 26, 34, 0.05);
+  --detail-from: #f7f0e1;
+  --detail-to: #ede1c4;
+  --tile-active: #111214;
+  --tile-active-fg: #ffffff;
+  --gold: #c9a65f;
+
+  /* The old glass names, kept so every module follows */
+  --glass: #ffffff;
+  --glass-strong: #ffffff;
+  --glass-dark: rgba(20, 26, 34, 0.06);
+  --glass-tile-dark: #f3eadb;
+  --glass-tile-dark-fg: #1b1915;
+  --glass-border: #e3e7ee;
+  --glass-shadow: 0 1px 2px rgba(20, 26, 34, 0.05);
+  --glass-blur: 0px;
+
+  --background: #ffffff;
+  --foreground: #121418;
+  --card: #ffffff;
+  --card-foreground: #121418;
+  --popover: #ffffff;
+  --popover-foreground: #121418;
+  --primary: #121418;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f3f6;
+  --secondary-foreground: #121418;
+  --muted: #f1f3f6;
+  --muted-foreground: #5d6470;
+  --accent: #f1f3f6;
+  --accent-foreground: #121418;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --border: #e3e7ee;
+  --input: #d9dee6;
+  --ring: #121418;
+
+  /* Status colours – only ever used for status */
+  --status-blue: #2f6bd8;
+  --status-green: #1d8a4e;
+  --status-amber: #c27a0e;
+  --status-red: #c4321f;
+  --status-blue-soft: rgba(47, 107, 216, 0.1);
+  --status-green-soft: rgba(29, 138, 78, 0.1);
+  --status-amber-soft: rgba(214, 140, 20, 0.14);
+  --status-red-soft: rgba(196, 50, 31, 0.1);
+}
+
+.dark {
+  color-scheme: dark;
+  --backdrop-base: #000000;
+  --frame: #0f0f11;
+  --sidebar: #060607;
+  --sidebar-fg: #d0d0d4;
+  --sidebar-muted: #7c7c83;
+  --sidebar-hover: rgba(255, 255, 255, 0.05);
+  --sidebar-active: #e6d3a6;
+  --sidebar-active-fg: #17140e;
+  --records: #1c1d21;
+  --surface: #26272c;
+  --surface-border: rgba(255, 255, 255, 0.06);
+  --surface-shadow: none;
+  --detail-from: #3a3122;
+  --detail-to: #1f1b15;
+  --tile-active: #e2cd9c;
+  --tile-active-fg: #17140e;
+  --gold: #dcc58f;
+
+  --glass: #26272c;
+  --glass-strong: #2e2f35;
+  --glass-dark: rgba(0, 0, 0, 0.35);
+  --glass-tile-dark: #2a251c;
+  --glass-tile-dark-fg: #f1ead9;
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-shadow: none;
+
+  --background: #0f0f11;
+  --foreground: #eeeef1;
+  --card: #1c1d21;
+  --card-foreground: #eeeef1;
+  --popover: #1f2024;
+  --popover-foreground: #eeeef1;
+  --primary: #e2cd9c;
+  --primary-foreground: #17140e;
+  --secondary: #26272c;
+  --secondary-foreground: #eeeef1;
+  --muted: #26272c;
+  --muted-foreground: #a3a3ab;
+  --accent: #2e2f35;
+  --accent-foreground: #eeeef1;
+  --destructive: #ff8a80;
+  --destructive-foreground: #1b0f0e;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: #e2cd9c;
+
+  --status-blue: #8ab4ff;
+  --status-green: #6fd59a;
+  --status-amber: #f3c46b;
+  --status-red: #ff8f87;
+  --status-blue-soft: rgba(138, 180, 255, 0.14);
+  --status-green-soft: rgba(111, 213, 154, 0.13);
+  --status-amber-soft: rgba(243, 196, 107, 0.15);
+  --status-red-soft: rgba(255, 143, 135, 0.14);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    min-height: 100%;
+  }
+  body {
+    @apply text-foreground antialiased;
+    font-family: var(--font-sans);
+    background-color: var(--frame);
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* The records window (cool grey-blue) – every page's main window */
+  .glass-panel {
+    background: var(--records);
+    border: 1px solid transparent;
+    border-radius: 24px;
+  }
+  /* White surfaces: rows, cards, tiles */
+  .glass-tile {
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--surface-shadow);
+    border-radius: 16px;
+  }
+  /* The detail window (warm cream; warm gold-brown in dark) */
+  .glass-tile-dark {
+    background: linear-gradient(160deg, var(--detail-from), var(--detail-to));
+    color: var(--glass-tile-dark-fg);
+    border: 1px solid transparent;
+    border-radius: 24px;
+  }
+  .glass-pill {
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    box-shadow: 0 6px 20px -10px rgba(20, 26, 34, 0.25);
+    border-radius: 999px;
+  }
+  /* Summary tiles: white, and the chosen one filled (black in light, gold in dark) */
+  .lx-tile {
+    background: var(--surface);
+    color: var(--foreground);
+    border: 1px solid var(--surface-border);
+    box-shadow: var(--surface-shadow);
+    border-radius: 18px;
+  }
+  .lx-tile[aria-pressed="true"],
+  .lx-tile-active {
+    background: var(--tile-active);
+    color: var(--tile-active-fg);
+    border-color: transparent;
+  }
+  .lx-tile[aria-pressed="true"] .text-muted-foreground,
+  .lx-tile-active .text-muted-foreground {
+    color: color-mix(in srgb, var(--tile-active-fg) 65%, transparent);
+  }
+  /* The black sidebar */
+  .lx-sidebar {
+    background: var(--sidebar);
+    color: var(--sidebar-fg);
+    border-radius: 24px;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120, 130, 145, 0.45) transparent;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+
+/* Luex Life: the whole app fits one screen on every device; only the windows inside may scroll */
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Side menu rows shrink on short screens so all 15 modules stay visible without scrolling */
+.lx-nav-item { min-height: 40px; }
+@media (min-height: 1000px) { .lx-nav-item { min-height: 44px; } }
+@media (max-height: 850px) { .lx-nav-item { min-height: 36px; } }
+@media (max-height: 740px) {
+  .lx-nav-item { min-height: 30px; }
+  .lx-nav-item .lx-nav-ico { width: 26px; height: 26px; }
+}
