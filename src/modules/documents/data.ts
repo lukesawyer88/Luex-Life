@@ -289,6 +289,8 @@ export const CHECKLIST: { title: string; folder: string; match: RegExp; each?: b
   { title: "Home insurance", folder: "Insurance", match: /home insurance|house insurance|contents insurance|buildings insurance/i },
   { title: "Car insurance", folder: "Car", match: /car insurance|motor/i },
   { title: "MOT certificate", folder: "Car", match: /\bmot\b/i },
+  { title: "Car tax", folder: "Car", match: /car tax|road tax|vehicle tax|\bved\b/i },
+  { title: "Breakdown cover", folder: "Car", match: /breakdown/i },
   { title: "Car logbook (V5C)", folder: "Car", match: /logbook|v5/i },
   { title: "Tenancy or mortgage", folder: "House", match: /tenancy|mortgage|lease/i },
   { title: "Boiler service", folder: "House", match: /boiler|gas safe/i },

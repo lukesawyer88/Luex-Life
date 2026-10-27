@@ -65,3 +65,10 @@ Any of them can be brought back as a standard feature later.
 13. Photo proof on chores and jobs.
 14. History as a PDF (CSV stays).
 15. Also changed: the "for me / for us / for the children" switches removed; tabs are Children, Waiting, Jobs, History for parents and "My stars and money", Jobs for children.
+
+## Cars and Renewals (folded into Documents, 27 Oct 2026)
+Not a module of its own: Documents already tracks MOT, car tax, insurance and breakdown cover with reminders, Money tracks contracts ending, and Home Care has "Service the car". Documents' "Renewals" tab now shows all of these in one list with a small icon for each kind (car, papers, contracts, home jobs).
+Could be added later:
+1. A page per car (MOT, tax, insurance and service for each vehicle together).
+2. Fuel and mileage logs.
+3. Carpool beyond the Calendar's driver and School's runs.

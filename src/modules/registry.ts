@@ -1,10 +1,9 @@
-// The 15 Luex Life modules (agreed 26 Oct 2026). Adding a module = adding an entry here and its content.
+// The Luex Life modules (agreed 26 Oct 2026; Cars and Renewals folded into Documents' Renewals, 27 Oct). Adding a module = adding an entry here and its content.
 // The shell reads this list to build the menu, the phone bar and the module pages; it never changes per module.
 import {
   BadgeDollarSign,
   BookUser,
   CalendarDays,
-  Car,
   CookingPot,
   FileText,
   GraduationCap,
@@ -94,11 +93,6 @@ export const MODULES: ModuleConfig[] = [
     key: "documents", name: "Documents and Papers", icon: FileText, group: "Admin", audience: "adults", wave: 1, canSwitchOff: true,
     summary: "Where your important papers are, and when they run out.",
     includes: ["Documents", "Passport and ID expiry dates", "Where important papers are kept"],
-  },
-  {
-    key: "cars", name: "Cars and Renewals", icon: Car, group: "Admin", audience: "parents", wave: 2, canSwitchOff: true,
-    summary: "Service, tax, insurance and carpool.",
-    includes: ["Vehicles", "Insurance, tax and renewals", "Carpool"],
   },
   {
     key: "contacts", name: "Contacts and Emergency", icon: BookUser, group: "Admin", audience: "everyone", wave: 1, canSwitchOff: false,

@@ -60,7 +60,7 @@ export function DocumentsPage() {
             onChange={setTab}
             items={[
               { key: "papers", label: "Papers", icon: FileText },
-              { key: "soon", label: "Running out", icon: AlarmClock },
+              { key: "soon", label: "Renewals", icon: AlarmClock },
               { key: "checklist", label: "Checklist", icon: ListChecks },
             ]}
           />
