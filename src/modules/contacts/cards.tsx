@@ -159,9 +159,8 @@ function CardForm({ w, onClose, onSaved }: { w: Who | null; onClose: () => void;
         id = data.id;
       }
       if (!pet && id) {
-        const { error } = w?.cond
-          ? await supabase.from("em_conditions").update({ conditions: conditions.trim(), shared }).eq("card_id", id)
-          : await supabase.from("em_conditions").insert({ card_id: id, family_id: family.id, conditions: conditions.trim(), shared });
+        let { error } = w?.cond ? { error: null } : await supabase.from("em_conditions").insert({ card_id: id, family_id: family.id, conditions: conditions.trim(), shared });
+        if (w?.cond || error?.code === "23505") ({ error } = await supabase.from("em_conditions").update({ conditions: conditions.trim(), shared }).eq("card_id", id));
         if (error) throw error;
       }
       await refreshEm(qc, family.id);

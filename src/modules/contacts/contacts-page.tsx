@@ -31,7 +31,7 @@ export function ContactsPage() {
       const people = [
         ...members.filter((m) => !m.archived_at).map((m) => {
           const card = cards?.cards.find((c) => c.member_id === m.id) ?? null;
-          return { name: m.display_name, card, conditions: card ? cards?.conditions.find((x) => x.card_id === card.id)?.conditions || null : null };
+          return { name: m.display_name, card, conditions: card ? cards?.conditions.find((x) => x.card_id === card.id && x.shared)?.conditions || null : null };
         }),
         ...(cards?.cards.filter((c) => !c.member_id) ?? []).map((c) => ({ name: `${c.pet_name} (pet)`, card: c, conditions: null })),
       ];

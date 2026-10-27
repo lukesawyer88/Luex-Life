@@ -7,25 +7,17 @@ import { Loader2, MapPin, PawPrint, Phone, TriangleAlert } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type SharedCard = {
-  name: string; pet: boolean; colour: string | null; birthday: string | null; allergies: string; medicines: string; blood_group: string | null;
+  name: string; pet: boolean; colour: string | null; age: number | null; allergies: string; medicines: string; blood_group: string | null;
   doctor: string | null; doctor_phone: string | null; microchip: string | null; insurer: string | null; notes: string; conditions: string | null;
 };
 type Shared = {
   family: string; name: string; expires_at: string;
   home: Record<"address" | "stopcock" | "fuse_box" | "gas_meter" | "first_aid" | "spare_key" | "meet_point" | "plan" | "bedtimes" | "wifi_name" | "wifi_password", string | null>;
-  call: { name: string; phone: string | null; phone2: string | null; notes: string }[];
+  call: { name: string; phone: string | null; phone2: string | null }[];
   cards: SharedCard[];
 };
 
 const tel = (p: string) => `tel:${p.replace(/[^\d+]/g, "")}`;
-
-function age(b: string | null) {
-  if (!b) return null;
-  const d = new Date(`${b}T12:00:00Z`), n = new Date();
-  let a = n.getUTCFullYear() - d.getUTCFullYear();
-  if (n.getUTCMonth() < d.getUTCMonth() || (n.getUTCMonth() === d.getUTCMonth() && n.getUTCDate() < d.getUTCDate())) a--;
-  return a >= 0 && a < 30 ? a : null;
-}
 
 export function SharedEmergencyPage() {
   const token = (useParams({ strict: false }) as { token?: string }).token ?? "";
@@ -82,7 +74,7 @@ export function SharedEmergencyPage() {
                   {d.call.map((c, i) => (
                     <li key={i} className="glass-tile flex items-center gap-3 p-3">
                       <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--surface)] font-bold">{i + 1}</span>
-                      <span className="min-w-0 flex-1"><span className="block text-lg font-semibold">{c.name}</span>{c.notes ? <span className="block text-sm text-muted-foreground">{c.notes}</span> : null}</span>
+                      <span className="min-w-0 flex-1 text-lg font-semibold">{c.name}</span>
                       {c.phone ? <a href={tel(c.phone)} className="flex h-12 items-center gap-2 rounded-full bg-[var(--status-green)] px-4 font-bold text-white"><Phone className="size-5" /> Call</a> : null}
                     </li>
                   ))}
@@ -97,7 +89,7 @@ export function SharedEmergencyPage() {
                     <div key={i} className="glass-tile space-y-1 p-4 text-base">
                       <p className="flex items-center gap-2 text-lg font-bold">
                         {c.pet ? <PawPrint className="size-5" /> : <span className="size-4 rounded-full" style={{ background: c.colour ?? "#888" }} />}
-                        {c.name}{age(c.birthday) != null ? <span className="text-sm font-normal text-muted-foreground">age {age(c.birthday)}</span> : null}
+                        {c.name}{c.age != null && c.age < 30 ? <span className="text-sm font-normal text-muted-foreground">age {c.age}</span> : null}
                       </p>
                       {c.allergies ? <p><span className="font-semibold text-[var(--status-red)]">Allergic to:</span> {c.allergies}</p> : null}
                       {c.medicines ? <p><span className="font-semibold">Medicines:</span> {c.medicines}</p> : null}

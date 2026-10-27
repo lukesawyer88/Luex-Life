@@ -167,10 +167,28 @@ begin
   j := public.em_shared(tok);
   perform pg_temp.chk(j -> 'home' ->> 'wifi_password' = 'secret123', 'the Wi-Fi is in the link once ticked');
   perform pg_temp.chk(j::text not like '%Asthma%', 'hidden conditions are in the link');
+  perform pg_temp.chk(j::text not like '%Mum%', 'contact notes are in the link');
+  perform pg_temp.chk(j::text not like '%birthday%', 'a full birthday is in the link');
   perform pg_temp.act(up, 'pat@test.dev');
   update public.em_shares set revoked_at = now() where family_id = fa;
   perform pg_temp.act(null, null);
   perform pg_temp.chk(public.em_shared(tok) is null, 'a stopped link still opens');
+  perform pg_temp.act(ua, 'ann@test.dev');
+  begin
+    update public.em_shares set revoked_at = null where family_id = fa;
+    perform pg_temp.chk(false, 'a stopped link was started again');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.act(null, null);
+  perform pg_temp.chk(public.em_shared(tok) is null, 'a stopped link opens again');
+  -- someone who has left drops out of the link
+  perform pg_temp.act(ua, 'ann@test.dev');
+  tok2 := public.em_create_share('Archive check', 1);
+  perform pg_temp.sys(); update public.family_members set archived_at = now() where id = tom;
+  perform pg_temp.act(null, null);
+  perform pg_temp.chk(public.em_shared(tok2)::text not like '%Inhaler%', 'a child who has left is in the link');
+  perform pg_temp.sys(); update public.family_members set archived_at = null where id = tom;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.em_shares set revoked_at = now() where id = (select id from public.em_shares where name = 'Archive check');
   perform pg_temp.act(ua, 'ann@test.dev');
   tok2 := public.em_create_share('Next week', 7);
   perform pg_temp.sys(); update public.family_members set role = 'member' where id = ann;

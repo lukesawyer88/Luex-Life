@@ -11,14 +11,14 @@ begin
   if tg_table_name = 'em_contacts' then
     if tg_op = 'INSERT' then new.created_by := me; new.created_at := now(); new.deleted_at := null;
     elsif new.created_by is distinct from old.created_by then raise exception 'That change is not allowed';
-    elsif new.deleted_at is not null and old.deleted_at is null then new.deleted_at := now(); end if;
+    elsif new.deleted_at is not null and new.deleted_at is distinct from old.deleted_at then new.deleted_at := now(); end if;
     new.updated_at := now();
   elsif tg_table_name = 'em_cards' then
     if tg_op = 'UPDATE' and (new.member_id is distinct from old.member_id) then raise exception 'That change is not allowed'; end if;
     if tg_op = 'INSERT' then new.deleted_at := null; end if;
     -- only pets' cards are removed (a person's card is just emptied)
     if new.deleted_at is not null and new.member_id is not null then raise exception 'That change is not allowed'; end if;
-    if tg_op = 'UPDATE' and new.deleted_at is not null and old.deleted_at is null then new.deleted_at := now(); end if;
+    if tg_op = 'UPDATE' and new.deleted_at is not null and new.deleted_at is distinct from old.deleted_at then new.deleted_at := now(); end if;
     if new.member_id is not null and not exists (select 1 from public.family_members where id = new.member_id and family_id = new.family_id) then
       raise exception 'Pick someone in this household';
     end if;
@@ -39,6 +39,9 @@ create trigger em_conditions_stamp before insert or update on public.em_conditio
 create trigger em_home_stamp before insert or update on public.em_home for each row execute function public.stamp_em_row();
 
 -- ---------------------------------------------------------------- babysitter links
+
+-- a stopped link stays stopped (the same guard the calendar's links have)
+create trigger em_shares_guard before update of revoked_at on public.em_shares for each row execute function public.guard_share_change();
 
 create or replace function public.em_create_share(p_name text, p_days integer)
 returns text language plpgsql security definer set search_path = '' as $$
@@ -83,10 +86,13 @@ begin
       'address', h.address, 'stopcock', h.stopcock, 'fuse_box', h.fuse_box, 'gas_meter', h.gas_meter,
       'first_aid', h.first_aid, 'spare_key', h.spare_key, 'meet_point', h.meet_point, 'plan', h.plan, 'bedtimes', h.bedtimes,
       'wifi_name', case when h.wifi_in_link then h.wifi_name end, 'wifi_password', case when h.wifi_in_link then h.wifi_password end),
-    'call', coalesce((select jsonb_agg(jsonb_build_object('name', c.name, 'phone', c.phone, 'phone2', c.phone2, 'notes', c.notes) order by c.call_order)
+    -- contact notes stay at home; only names and numbers go in the link
+    'call', coalesce((select jsonb_agg(jsonb_build_object('name', c.name, 'phone', c.phone, 'phone2', c.phone2) order by c.call_order)
       from public.em_contacts c where c.family_id = f.id and c.deleted_at is null and c.call_order is not null), '[]'::jsonb),
     'cards', coalesce((select jsonb_agg(jsonb_build_object(
-        'name', coalesce(m.display_name, k.pet_name), 'pet', k.member_id is null, 'colour', m.colour, 'birthday', m.birthday,
+        'name', coalesce(m.display_name, k.pet_name), 'pet', k.member_id is null, 'colour', m.colour,
+        -- an age, not a birthday
+        'age', case when m.birthday is not null then extract(year from age(current_date, m.birthday))::int end,
         'allergies', k.allergies, 'medicines', k.medicines, 'blood_group', k.blood_group, 'doctor', k.doctor, 'doctor_phone', k.doctor_phone,
         'microchip', k.microchip, 'insurer', k.insurer, 'notes', k.notes,
         'conditions', case when x.shared then x.conditions end)

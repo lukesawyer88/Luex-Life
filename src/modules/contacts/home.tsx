@@ -96,9 +96,9 @@ function HomeForm({ h, onClose }: { h: HomeInfo | null; onClose: () => void }) {
     setBusy(true);
     try {
       const row = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, x.trim() || null])) as Record<keyof typeof v, string | null>;
-      const { error } = h
-        ? await supabase.from("em_home").update({ ...row, wifi_in_link: wifiInLink }).eq("family_id", family.id)
-        : await supabase.from("em_home").insert({ ...row, wifi_in_link: wifiInLink, family_id: family.id });
+      // someone else may have filled it in first: then change theirs
+      let { error } = h ? { error: null } : await supabase.from("em_home").insert({ ...row, wifi_in_link: wifiInLink, family_id: family.id });
+      if (h || error?.code === "23505") ({ error } = await supabase.from("em_home").update({ ...row, wifi_in_link: wifiInLink }).eq("family_id", family.id));
       if (error) throw error;
       await refreshEm(qc, family.id);
       toast.success("Saved");
