@@ -13,7 +13,7 @@ create table public.health_meds (
   person_id uuid not null references public.family_members (id) on delete cascade,
   name text not null check (char_length(name) between 1 and 60),
   amount text check (char_length(amount) <= 40),
-  times text[] not null check (cardinality(times) between 1 and 6
+  times text[] not null check (cardinality(times) between 1 and 6 and array_position(times, null) is null
     and array_to_string(times, ',') ~ '^([01][0-9]|2[0-3]):[0-5][0-9](,([01][0-9]|2[0-3]):[0-5][0-9])*$'),
   start_on date not null,
   end_on date,
@@ -100,4 +100,5 @@ grant insert (family_id, med_id, on_date, at_time, given_at) on public.health_do
 -- the app ticks with an upsert, which names every column; the guard refuses changes to anything but given_at
 grant update (family_id, med_id, on_date, at_time, given_at) on public.health_doses to authenticated;
 grant insert (family_id, person_id, title, due_on, every_months, notes) on public.health_checks to authenticated;
-grant update (title, due_on, every_months, last_done_on, done_at, notes, deleted_at) on public.health_checks to authenticated;
+-- done only through last_done_on, so a repeating one always moves on
+grant update (title, due_on, every_months, last_done_on, notes, deleted_at) on public.health_checks to authenticated;

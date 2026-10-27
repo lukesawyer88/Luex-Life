@@ -79,7 +79,7 @@ begin
   perform pg_temp.sys();
   perform public.queue_health_reminders(); perform public.queue_health_reminders();
   perform pg_temp.chk((select count(*) from public.notifications where kind = 'health' and member_id in (ann, pat) and title = 'Medicine time for Kid') = 2, 'both parents picked are reminded once');
-  perform pg_temp.chk((select body from public.notifications where kind = 'health' and member_id = ann and title = 'Medicine time for Kid') = 'Calpol, 5ml at ' || hm || '. Tick it when it''s given', 'the reminder says what, how much and when');
+  perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'health' and (title || body) ~* 'calpol|5ml'), 'the medicine''s name shows on a locked phone');
   perform pg_temp.act(up, 'pat@test.dev');
   insert into public.health_doses (family_id, med_id, on_date, at_time, given_at) values (fa, m1, today, hm, '2000-01-01')
     on conflict (med_id, on_date, at_time) do update set given_at = excluded.given_at;
@@ -102,6 +102,21 @@ begin
     insert into public.health_doses (family_id, med_id, on_date, at_time, given_at) values (fa, m1, today + 5, '23:59', now());
     perform pg_temp.chk(false, 'a dose after the last day was saved');
   exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.health_meds (family_id, person_id, name, times, start_on) values (fa, kid, 'Calpol', array['08:00', null], today);
+    perform pg_temp.chk(false, 'a blank time was saved');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.health_meds (family_id, person_id, name, times, start_on) values (fa, kid, 'Calpol', array['08:00', '08:00'], today);
+    perform pg_temp.chk(false, 'the same time was saved twice');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- a parent on the reminder leaves: it can still be changed and stopped, and they drop off it
+  perform pg_temp.sys(); update public.family_members set role = 'member' where id = pat;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.health_meds set notes = 'With food' where id = m1;
+  perform pg_temp.chk((select remind = array[ann] and notes = 'With food' from public.health_meds where id = m1), 'a reminder whose other parent left can still be changed');
+  perform pg_temp.sys(); update public.family_members set role = 'parent' where id = pat;
+  perform pg_temp.act(ua, 'ann@test.dev');
   update public.health_meds set deleted_at = now() where id = m2;
   begin
     update public.health_meds set deleted_at = null where id = m2;
@@ -119,8 +134,8 @@ begin
     perform pg_temp.chk(false, 'a daytime time zone was found for the check-up reminder');
   else
     perform public.queue_health_reminders(); perform public.queue_health_reminders();
-    perform pg_temp.chk((select count(*) from public.notifications where kind = 'health' and title = 'Kid''s Dentist is due') = 2, 'every parent hears a check-up is due, once');
-    perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'health' and title like '%booster%'), 'something not yet due was reminded about');
+    perform pg_temp.chk((select count(*) from public.notifications where kind = 'health' and title = 'A check-up is due for Kid') = 2, 'every parent hears a check-up is due, once (without saying which on the lock screen)');
+    perform pg_temp.chk((select count(*) from public.notifications where kind = 'health' and title like 'A check-up%') = 2, 'something not yet due was reminded about');
   end if;
   update public.families set timezone = 'Europe/London' where id = fa;
   perform pg_temp.act(ua, 'ann@test.dev');
@@ -131,6 +146,10 @@ begin
   begin
     update public.health_checks set last_done_on = today + 10 where id = c1;
     perform pg_temp.chk(false, 'a check-up was marked done in the future');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    update public.health_checks set done_at = now() where id = c1;
+    perform pg_temp.chk(false, 'a repeating check-up was finished without moving on');
   exception when others then perform pg_temp.chk(true, ''); end;
   begin
     update public.health_checks set person_id = pat where id = c1;

@@ -1,7 +1,7 @@
 // One dose of medicine with its "given" tick (Health and the Home card), and the doses due around now.
 import { useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { MemberAvatar } from "@/components/member-avatar";
@@ -45,6 +45,9 @@ export function DoseRow({ s, day }: { s: DoseSlot; day: string }) {
 export function useDoseNow() {
   const { family, role, switchedOff } = useFamilyState();
   const on = role === "parent" && !switchedOff.has("health");
+  // re-check every minute, so a dose appears when it's due on a phone left on Home
+  const [, setTick] = useState(0);
+  useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
   const today = todayIn(family.timezone);
   const meds = useMeds(on).data ?? [];
   const doses = useDoses(today, on).data ?? [];

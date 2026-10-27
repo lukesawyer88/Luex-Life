@@ -62,6 +62,7 @@ export function useDoses(day: string, enabled = true) {
   return useQuery({
     queryKey: healthKey(family.id, "doses", day),
     enabled,
+    refetchInterval: 60_000,
     queryFn: () => rows<Dose>(supabase.from("health_doses").select("*").eq("family_id", family.id).eq("on_date", day)),
   });
 }
@@ -125,5 +126,6 @@ export function errMsg(e: unknown): string {
   const m = e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e);
   if (/fetch|network/i.test(m)) return "No signal. Try again in a moment";
   if (/row-level|permission/i.test(m)) return "That change is not allowed";
+  if (/violates check constraint/i.test(m)) return "Check the dates and times";
   return m.length < 120 ? m : "Something went wrong. Try again";
 }

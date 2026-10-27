@@ -14,7 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { useDesktop } from "@/lib/use-desktop";
 import { cn } from "@/lib/utils";
 import { EditClash, insertEvent, saveEventChanges, type CalEvent } from "@/modules/calendar/data";
-import { dayStart } from "@/modules/calendar/time";
+import { atTime } from "@/modules/calendar/time";
 import { Chip, Empty, Field, Sheet } from "@/modules/calendar/ui";
 
 import {
@@ -323,7 +323,7 @@ function HostForm({ existing, onClose, onSaved }: { existing: Hosting | null; on
     if (!day) return void toast.error("Pick the day");
     setBusy(true);
     try {
-      const at = (hm: string) => { const [h, m] = hm.split(":").map(Number); return new Date(dayStart(day, tz).getTime() + (h * 60 + m) * 60000); };
+      const at = (hm: string) => atTime(day, hm, tz);
       const starts = at(from || "00:00");
       let ends = at(to || from || "00:00");
       if (ends <= starts) ends = new Date(starts.getTime() + 3 * 3600_000);

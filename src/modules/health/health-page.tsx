@@ -15,7 +15,7 @@ import { takeLinkParams } from "@/lib/link-params";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { insertEvent } from "@/modules/calendar/data";
-import { dayStart } from "@/modules/calendar/time";
+import { atTime } from "@/modules/calendar/time";
 import { Chip, Empty, Field, Sheet, Tabs } from "@/modules/calendar/ui";
 
 import {
@@ -109,7 +109,8 @@ function MedForm({ existing, onClose }: { existing: Med | null; onClose: () => v
   const [extra, setExtra] = useState("");
   const [start, setStart] = useState(existing?.start_on ?? today);
   const [end, setEnd] = useState(existing?.end_on ?? "");
-  const [remind, setRemind] = useState<string[]>(existing?.remind ?? [me.id]);
+  // anyone who's no longer a parent drops off
+  const [remind, setRemind] = useState<string[]>((existing?.remind ?? [me.id]).filter((id) => parents.some((p) => p.id === id)));
   const [busy, setBusy] = useState(false);
   const toggle = (t: string) => setTimes(times.includes(t) ? times.filter((x) => x !== t) : [...times, t].sort());
 
@@ -169,7 +170,7 @@ function MedForm({ existing, onClose }: { existing: Med | null; onClose: () => v
         </Field>
       ) : null}
       <div className="flex flex-wrap gap-2 pt-1">
-        <Button data-testid="med-save" className="h-12 flex-1 rounded-full text-base font-semibold" disabled={busy || !name.trim() || !times.length || !start} onClick={() => void save()}>{busy ? "Saving…" : "Save"}</Button>
+        <Button data-testid="med-save" className="h-12 flex-1 rounded-full text-base font-semibold" disabled={busy || !name.trim() || !times.length || !start || (!!end && end < start)} onClick={() => void save()}>{busy ? "Saving…" : "Save"}</Button>
         <Button variant="outline" className="h-12 rounded-full" onClick={onClose}>Cancel</Button>
         {existing ? <Button variant="ghost" className="h-12 rounded-full text-[var(--status-red)]" onClick={() => void remove()}><Trash2 className="size-4" /> Stop</Button> : null}
       </div>
@@ -348,10 +349,10 @@ function ApptForm({ onClose }: { onClose: () => void }) {
   async function save() {
     setBusy(true);
     try {
-      const [h, m] = time.split(":").map(Number);
-      const starts = new Date(dayStart(day, tz).getTime() + (h * 60 + m) * 60000);
-      // dates only: the appointment's name and place, never why
-      await insertEvent({ family_id: family.id, title: title.trim(), type: "appointment", all_day: false, starts_at: starts.toISOString(), ends_at: new Date(starts.getTime() + 30 * 60000).toISOString(), people: who, location: where.trim() || null });
+      const starts = atTime(day, time, tz);
+      // dates only: the appointment's name and place, never why. Seen by the parents and the people it's for.
+      const viewers = [...new Set([...members.filter((m) => m.role === "parent" && !m.archived_at).map((m) => m.id), ...who])];
+      await insertEvent({ family_id: family.id, title: title.trim(), type: "appointment", all_day: false, starts_at: starts.toISOString(), ends_at: new Date(starts.getTime() + 30 * 60000).toISOString(), people: who, location: where.trim() || null, visibility: "selected", viewers });
       await qc.invalidateQueries({ queryKey: ["cal", family.id] });
       toast.success("On the Calendar");
       onClose();
@@ -372,7 +373,7 @@ function ApptForm({ onClose }: { onClose: () => void }) {
         <Field label="Time"><Input data-testid="appt-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-12 w-32 text-base" /></Field>
       </div>
       <Field label="Where" hint="Optional"><Input value={where} maxLength={200} onChange={(e) => setWhere(e.target.value)} placeholder="Riverside Dental" className="h-12 text-base" /></Field>
-      <p className="text-xs text-muted-foreground">It goes on the Calendar for the people picked. Keep the reason off it; the Calendar is shared.</p>
+      <p className="text-xs text-muted-foreground">It goes on the Calendar, seen only by the parents and the people it's for. Keep the reason off it.</p>
       <div className="flex gap-2 pt-1">
         <Button data-testid="appt-save" className="h-12 flex-1 rounded-full text-base font-semibold" disabled={busy || !title.trim() || !day || !time || !who.length} onClick={() => void save()}>{busy ? "Saving…" : "Save"}</Button>
         <Button variant="outline" className="h-12 rounded-full" onClick={onClose}>Cancel</Button>

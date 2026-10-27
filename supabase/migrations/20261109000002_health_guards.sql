@@ -12,12 +12,16 @@ begin
   if tg_table_name = 'health_meds' then
     if tg_op = 'UPDATE' and new.person_id <> old.person_id then raise exception 'That change is not allowed'; end if;
     if tg_op = 'INSERT' and not public.members_in_family(new.family_id, array[new.person_id]) then raise exception 'Pick someone in this household'; end if;
-    if cardinality(new.remind) = 0 then new.remind := array[me]; end if;
-    -- reminders only go to parents (they're the only ones who can see Health)
-    if exists (select 1 from unnest(new.remind) r where not exists (select 1 from public.family_members x
+    if cardinality(new.times) <> cardinality(array(select distinct unnest(new.times))) then raise exception 'Each time only once'; end if;
+    -- reminders only go to parents (they're the only ones who can see Health); on a change, anyone who has since
+    -- left or stopped being a parent is quietly taken off, so the reminder can still be changed or stopped
+    if tg_op = 'INSERT' and exists (select 1 from unnest(new.remind) r where not exists (select 1 from public.family_members x
                where x.id = r and x.family_id = new.family_id and x.role = 'parent' and x.archived_at is null)) then
       raise exception 'Reminders can only go to parents';
     end if;
+    new.remind := array(select distinct r from unnest(new.remind) r where exists (select 1 from public.family_members x
+      where x.id = r and x.family_id = new.family_id and x.role = 'parent' and x.archived_at is null));
+    if cardinality(new.remind) = 0 then new.remind := array[me]; end if;
     if tg_op = 'INSERT' then new.created_by := me; new.created_at := now(); new.deleted_at := null;
     else
       if old.deleted_at is not null then raise exception 'That change is not allowed'; end if;
@@ -32,7 +36,7 @@ begin
     end if;
     if tg_op = 'INSERT' then
       if not (new.at_time = any (m.times)) or new.on_date < m.start_on or (m.end_on is not null and new.on_date > m.end_on)
-         or new.on_date > today or new.on_date < today - 7 then
+         or new.on_date > today + 1 or new.on_date < today - 7 then
         raise exception 'That dose isn''t on the list';
       end if;
       new.reminded_at := null;
@@ -52,7 +56,7 @@ begin
       if old.deleted_at is not null then raise exception 'That change is not allowed'; end if;
       if new.deleted_at is not null then new.deleted_at := now(); end if;
       if new.last_done_on is distinct from old.last_done_on and new.last_done_on is not null then
-        if new.last_done_on > today then raise exception 'Pick a day that has happened'; end if;
+        if new.last_done_on > today + 1 then raise exception 'Pick a day that has happened'; end if;
         -- done: a repeating one moves to its next date; a one-off is finished
         if new.every_months is not null then
           new.due_on := (new.last_done_on + make_interval(months => new.every_months))::date; new.done_at := null;
@@ -79,28 +83,30 @@ create trigger health_checks_stamp before insert or update on public.health_chec
 
 create or replace function public.queue_health_reminders()
 returns integer language plpgsql security definer set search_path = '' as $$
-declare f record; m record; c record; v uuid; local timestamp; today date; now_min integer; n integer := 0; made integer;
+declare f record; m record; c record; v uuid; local timestamp; today date; n integer := 0; made integer;
 begin
   for f in select id, coalesce(timezone, 'Europe/London') as tz from public.families where archived_at is null loop
     local := now() at time zone f.tz;
     today := local::date;
-    now_min := extract(hour from local)::integer * 60 + extract(minute from local)::integer;
 
+    -- each dose time today and yesterday as a real instant, so times just before midnight still fire
     for m in
-      select x.id, x.name, x.amount, x.remind, t.at_time, p.display_name as who
+      select x.id, x.remind, t.at_time, d.on_day, p.display_name as who
       from public.health_meds x cross join lateral unnest(x.times) as t(at_time)
+      cross join lateral (values (today), (today - 1)) as d(on_day)
       join public.family_members p on p.id = x.person_id
-      where x.family_id = f.id and x.deleted_at is null and x.start_on <= today and (x.end_on is null or x.end_on >= today)
-        and now_min - (split_part(t.at_time, ':', 1)::integer * 60 + split_part(t.at_time, ':', 2)::integer) between 0 and 30
+      where x.family_id = f.id and x.deleted_at is null and p.archived_at is null
+        and x.start_on <= d.on_day and (x.end_on is null or x.end_on >= d.on_day)
+        and now() - ((d.on_day + t.at_time::time) at time zone f.tz) between interval '0' and interval '30 minutes'
     loop
       insert into public.health_doses (family_id, med_id, on_date, at_time, reminded_at)
-        values (f.id, m.id, today, m.at_time, now()) on conflict (med_id, on_date, at_time) do nothing;
+        values (f.id, m.id, m.on_day, m.at_time, now()) on conflict (med_id, on_date, at_time) do nothing;
       get diagnostics made = row_count;
       if made = 0 then continue; end if;
       for v in select x.id from public.family_members x where x.id = any (m.remind) and x.family_id = f.id
                  and x.role = 'parent' and x.archived_at is null and x.user_id is not null loop
-        perform public.notify(v, 'health', 'Medicine time for ' || m.who,
-          m.name || coalesce(', ' || nullif(m.amount, ''), '') || ' at ' || m.at_time || '. Tick it when it''s given',
+        -- kept plain: it can show on a locked phone
+        perform public.notify(v, 'health', 'Medicine time for ' || m.who, 'Tap to see what, and tick it when it''s given',
           '/m/health?tab=medicine', null, interval '0');
         n := n + 1;
       end loop;
@@ -108,13 +114,13 @@ begin
 
     if extract(hour from local) >= 8 then
       for c in
-        select x.id, x.title, x.due_on, p.display_name as who from public.health_checks x join public.family_members p on p.id = x.person_id
+        select x.id, x.due_on, p.display_name as who from public.health_checks x join public.family_members p on p.id = x.person_id
         where x.family_id = f.id and x.deleted_at is null and x.done_at is null and x.due_on <= today
           and x.reminded_on is distinct from x.due_on and p.archived_at is null
       loop
         update public.health_checks set reminded_on = c.due_on where id = c.id;
         for v in select x.id from public.family_members x where x.family_id = f.id and x.role = 'parent' and x.archived_at is null and x.user_id is not null loop
-          perform public.notify(v, 'health', c.who || '''s ' || c.title || ' is due', 'Book it, then tick it when it''s done',
+          perform public.notify(v, 'health', 'A check-up is due for ' || c.who, 'Tap to see which. Book it, then tick it when it''s done',
             '/m/health?tab=checks', null, interval '0');
           n := n + 1;
         end loop;
