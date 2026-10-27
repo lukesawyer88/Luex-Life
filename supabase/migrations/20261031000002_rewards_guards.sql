@@ -204,7 +204,9 @@ begin
       if tg_op = 'INSERT' then
         target_role := public.reward_role(new.member_id);
         if new.on_date > today or new.on_date < today - 366 then raise exception 'Pick a date in the last year'; end if;
-        new.created_by := me; new.created_at := now(); new.source_key := null; new.decided_by := null; new.decided_at := null;
+        new.created_by := me; new.created_at := now(); new.decided_by := null; new.decided_at := null;
+        -- a phone's own key for something added without a signal (so a retry never saves it twice)
+        if new.source_key is not null and new.source_key !~ '^device:[0-9a-f-]{36}$' then new.source_key := null; end if;
         -- the sign follows the kind
         if new.kind in ('bonus', 'gift', 'tooth_fairy', 'birthday') and new.amount < 0 then raise exception 'That change is not allowed'; end if;
         if new.kind in ('deduction', 'spend', 'cash') and new.amount > 0 then new.amount := -new.amount; end if;

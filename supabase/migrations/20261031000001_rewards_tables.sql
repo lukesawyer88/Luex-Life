@@ -381,7 +381,7 @@ grant insert (family_id, reward_id, member_id, stars) on public.reward_gives to 
 grant insert (family_id, reward_id, member_id) on public.reward_claims to authenticated;
 grant update (status) on public.reward_claims to authenticated;
 
-grant insert (family_id, member_id, pot, amount, kind, note, on_date) on public.pocket_entries to authenticated;
+grant insert (family_id, member_id, pot, amount, kind, note, on_date, source_key) on public.pocket_entries to authenticated;
 grant update (status) on public.pocket_entries to authenticated;
 grant delete on public.pocket_entries to authenticated;
 grant insert (family_id, member_id, title, emoji, target, wish_item_id) on public.pocket_goals to authenticated;

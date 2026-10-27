@@ -393,7 +393,7 @@ export type Database = {
       >;
       pocket_entries: Table<
         { id: string; family_id: string; member_id: string; pot: string; amount: number; kind: string; note: string; status: string; on_date: string; source_key: string | null; created_by: string | null; decided_by: string | null; decided_at: string | null; created_at: string },
-        { family_id: string; member_id: string; pot?: string; amount: number; kind: string; note?: string; on_date?: string },
+        { family_id: string; member_id: string; pot?: string; amount: number; kind: string; note?: string; on_date?: string; source_key?: string | null },
         { status?: string }
       >;
       pocket_goals: Table<

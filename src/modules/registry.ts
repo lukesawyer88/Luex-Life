@@ -65,9 +65,9 @@ export const MODULES: ModuleConfig[] = [
     includes: ["Bills and household budget", "Subscriptions", "Savings goals", "Shared expenses and gift budgets"],
   },
   {
-    key: "pocket", name: "Pocket Money and Rewards", icon: BadgeDollarSign, group: "Money", audience: "everyone", wave: 1, canSwitchOff: true,
-    summary: "Ticking off chores earns pocket money and rewards.",
-    includes: ["Pocket money linked to chores", "Rewards", "Kids' own view"],
+    key: "pocket", name: "Rewards and Pocket Money", icon: BadgeDollarSign, group: "Money", audience: "everyone", wave: 1, canSwitchOff: true,
+    summary: "Habits and treats for grown-ups, shared rewards, and pocket money for children.",
+    includes: ["Habits and personal rewards", "Shared rewards and up-for-grabs jobs", "Pocket money, stars and the reward shop"],
   },
   {
     key: "home-care", name: "Home Care", icon: Home, group: "Home", audience: "everyone", wave: 2, canSwitchOff: true,
