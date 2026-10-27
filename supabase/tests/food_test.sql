@@ -167,7 +167,7 @@ begin
 
   -- ===== stock and use-by alerts
   perform pg_temp.act(ua, 'ann@test.dev');
-  insert into public.food_stock (family_id, name, place, use_by) values (fa, 'Chicken', 'fridge', current_date) returning id into st;
+  insert into public.food_stock (family_id, name, place, use_by) values (fa, 'Chicken', 'fridge', (now() at time zone 'Pacific/Kiritimati')::date) returning id into st;  -- "today" for that time zone
   perform pg_temp.sys();
   update public.families set timezone = 'Pacific/Kiritimati' where id = fa;  -- always after 08:00 somewhere for the test
   if (now() at time zone 'Pacific/Kiritimati')::time >= '08:00' then
