@@ -26,11 +26,17 @@ export function sameSecret(a: string, b: string): boolean {
   return diff === 0;
 }
 
-/** True when the request comes from the database's own schedule */
-export function fromSchedule(req: Request): boolean {
+let cronSecret: string | null = null;
+
+/** True when the request comes from the database's own schedule (its secret lives only in the database) */
+export async function fromSchedule(req: Request, db: SupabaseClient): Promise<boolean> {
   const got = req.headers.get("x-cron-secret");
-  const want = Deno.env.get("CRON_SECRET");
-  return !!got && !!want && want.length >= 32 && sameSecret(got, want);
+  if (!got) return false;
+  if (!cronSecret) {
+    const { data } = await db.rpc("server_setting", { p_name: "cron_secret" });
+    cronSecret = typeof data === "string" ? data : null;
+  }
+  return !!cronSecret && cronSecret.length >= 32 && sameSecret(got, cronSecret);
 }
 
 /** Full-access client: ignores row security, so every caller of it must check who may see what */

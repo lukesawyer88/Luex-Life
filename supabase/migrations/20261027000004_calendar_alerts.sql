@@ -76,6 +76,15 @@ end $$;
 
 -- ---------------------------------------------------------------- event log + change alerts
 
+-- waiting alerts about an event go away for anyone who can no longer see it
+create or replace function public.clear_hidden_alerts(ev public.cal_events)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.notifications n
+    where n.link = '/m/calendar?event=' || ev.id and coalesce(public.member_sees_event(ev, n.member_id), false) = false;
+end $$;
+revoke all on function public.clear_hidden_alerts(public.cal_events) from public, anon, authenticated;
+
 create or replace function public.after_event_change()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare
@@ -116,8 +125,7 @@ begin
     if new.recurrence_of is null then
       update public.cal_events set updated_at = now() where recurrence_of = new.id;
     end if;
-    -- waiting alerts about it go away for anyone who can no longer see it
-    delete from public.notifications n where n.link = '/m/calendar?event=' || new.id and not public.member_sees_event(new, n.member_id);
+    perform public.clear_hidden_alerts(new);
   end if;
 
   -- alerts only for changes people make (not imports), and not for ticking off a reminder

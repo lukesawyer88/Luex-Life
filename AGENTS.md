@@ -8,7 +8,7 @@ Luex Life is the family and household app from Luex. It is a **separate app with
   - Plain-English, sentence-case copy. British spelling. Lists shown to the owner are numbered lists.
   - Same design as Luex Work (black sidebar, white frame, grey-blue records window, cream detail window). Colours live in `src/styles.css` only.
   - Make exactly the change asked, only where asked. Don't start the next job unprompted.
-- **Stack:** Vite + React 19 + TypeScript (strict) + Tailwind v4 + shadcn/ui parts (`src/components/ui`) + TanStack Router and Query + Supabase. A plain single-page app: Cloudflare Pages serves `dist/`. No server code in the app.
+- **Stack:** Vite + React 19 + TypeScript (strict) + Tailwind v4 + shadcn/ui parts (`src/components/ui`) + TanStack Router and Query + Supabase. A plain single-page app: Cloudflare Pages serves `dist/`. Server jobs live only in Supabase Edge Functions (`supabase/functions`: push-sender, import-feeds) run by pg_cron. The store apps (App Store, Google Play) will wrap this same app with Capacitor near launch.
 - **Code goes through GitHub.** Merge to `main` yourself; Cloudflare builds from it. Never rewrite pushed history.
 - **Supabase project:** `luex-life`, ref `pjttemdnnnnlfijvoeip` (eu-west-1). Never touch the "Luex App" (Work) project.
 - **No live database changes without the owner's yes.** Every change is a migration file in `supabase/migrations` (and applied to the live project only when approved).
@@ -18,4 +18,5 @@ Luex Life is the family and household app from Luex. It is a **separate app with
 - **Modules:** the 15 agreed modules live in `src/modules/registry.ts`. Adding or building a module changes the registry entry and adds its own page and tables; it never changes the shell. Which modules are parent-only is set there (`audience`) and must also be enforced in each module's tables when they are built.
 - **Children's data:** keep it minimal. Pictures are private and compressed. Health is dates only, never records. Get an adviser's view before building Family Health and Kids' Space.
 - **AI:** the only AI in Luex is the Luex assistant. Any other AI feature must be agreed with the owner first. No AI credits spent without asking.
-- **Not built yet (agreed, waiting):** sign-in through Luex Work and the £5 discount link; sending emails and SMS (invites are copied and sent by hand for now); push notifications; the Luex assistant.
+- **Built:** Family Calendar (module 2) with web push notifications and calendar import. Test files: `supabase/tests/access_test.sql`, `app_calls_test.sql`, `calendar_test.sql` (run all three after any access change).
+- **Not built yet (agreed, waiting):** see `docs/todo.md`.

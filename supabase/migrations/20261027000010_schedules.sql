@@ -1,9 +1,7 @@
 -- Schedules for Luex Life's server functions: push notifications every minute, calendar imports every
 -- 10 minutes, and a daily tidy-up.
 --
--- BEFORE applying, the cron secret must exist in Vault (never in this file):
---   select vault.create_secret('<long random value>', 'cron_secret');
--- and the same value must be set as the CRON_SECRET secret on both edge functions.
+-- The schedule's secret is made by migration 20261027000009 and never leaves the database.
 -- Safe to run again: each job is removed and re-created.
 
 create extension if not exists pg_net with schema extensions;
@@ -27,7 +25,7 @@ select cron.schedule(
     url := 'https://pjttemdnnnnlfijvoeip.supabase.co/functions/v1/push-sender',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+      'x-cron-secret', (select value from luex_private.settings where name = 'cron_secret')
     ),
     body := '{}'::jsonb,
     timeout_milliseconds := 55000
@@ -43,7 +41,7 @@ select cron.schedule(
     url := 'https://pjttemdnnnnlfijvoeip.supabase.co/functions/v1/import-feeds',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+      'x-cron-secret', (select value from luex_private.settings where name = 'cron_secret')
     ),
     body := '{}'::jsonb,
     timeout_milliseconds := 55000
@@ -52,11 +50,15 @@ select cron.schedule(
 );
 
 -- every night at 03:17 UTC: old sent notifications and reminder records
-select cron.schedule(
-  'luex-tidy',
-  '17 3 * * *',
-  $job$
-  delete from public.notifications where pushed_at is not null and pushed_at < now() - interval '60 days';
+create or replace function public.tidy_old_notifications()
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.notifications where pushed_at < now() - interval '60 days';
+end $$;
+create or replace function public.tidy_old_reminder_sends()
+returns void language plpgsql security definer set search_path = '' as $$
+begin
   delete from public.reminder_sends where sent_at < now() - interval '30 days';
-  $job$
-);
+end $$;
+revoke all on function public.tidy_old_notifications(), public.tidy_old_reminder_sends() from public, anon, authenticated;
+select cron.schedule('luex-tidy', '17 3 * * *', $job$ select public.tidy_old_notifications(); select public.tidy_old_reminder_sends(); $job$);

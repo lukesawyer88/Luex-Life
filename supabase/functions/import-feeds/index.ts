@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   const db = serviceClient();
 
   // ---------------------------------------------------------------- the schedule
-  if (fromSchedule(req)) {
+  if (await fromSchedule(req, db)) {
     const began = Date.now();
     const cutoff = new Date(Date.now() - 25 * 60_000).toISOString();
     const { data, error } = await db

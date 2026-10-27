@@ -2,6 +2,24 @@
 
 -- ---------------------------------------------------------------- doing things
 
+-- keep at most 10 devices per login: the oldest goes
+create or replace function public.trim_devices(uid uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if (select count(*) from public.push_subscriptions where user_id = uid) >= 10 then
+    delete from public.push_subscriptions where id = (select id from public.push_subscriptions where user_id = uid order by created_at limit 1);
+  end if;
+end $$;
+revoke all on function public.trim_devices(uuid) from public, anon, authenticated;
+
+-- a device can move to a new person only when it proves it is the same device (same keys)
+create or replace function public.release_device(p_endpoint text, uid uuid, p_p256dh text, p_auth text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.push_subscriptions where endpoint = p_endpoint and (user_id = uid or (p256dh = p_p256dh and auth = p_auth));
+end $$;
+revoke all on function public.release_device(text, uuid, text, text) from public, anon, authenticated;
+
 -- save this device for push; a device moves to whoever is signed in on it now
 create or replace function public.save_push_subscription(p_endpoint text, p_p256dh text, p_auth text, p_agent text)
 returns void language plpgsql security definer set search_path = '' as $$
@@ -9,11 +27,8 @@ declare uid uuid := (select auth.uid()); me uuid := public.my_member_id(); fid u
 begin
   if uid is null or me is null then raise exception 'Please sign in'; end if;
   if p_endpoint !~* '^https://' then raise exception 'That device cannot get notifications'; end if;
-  if (select count(*) from public.push_subscriptions where user_id = uid) >= 10 then
-    delete from public.push_subscriptions where id = (select id from public.push_subscriptions where user_id = uid order by created_at limit 1);
-  end if;
-  -- a device can move to a new person only when it proves it is the same device (same keys)
-  delete from public.push_subscriptions where endpoint = p_endpoint and (user_id = uid or (p256dh = p_p256dh and auth = p_auth));
+  perform public.trim_devices(uid);
+  perform public.release_device(p_endpoint, uid, p_p256dh, p_auth);
   if exists (select 1 from public.push_subscriptions where endpoint = p_endpoint) then
     raise exception 'That device cannot get notifications';
   end if;
@@ -92,7 +107,7 @@ begin
 end $$;
 
 revoke all on function public.check_family_timezone(), public.family_today(uuid), public.after_feed_change(),
-  public.guard_share_change() from public, anon, authenticated;
+  public.guard_share_change(), public.clear_hidden_alerts(public.cal_events) from public, anon, authenticated;
 revoke all on function public.can_see_event(uuid), public.member_sees_event(public.cal_events, uuid),
   public.guard_event_change(), public.after_event_change(), public.notify(uuid, text, text, text, text, text, interval),
   public.stamp_family_row(), public.guard_chore_done(), public.can_do_routine(uuid), public.guard_routine_activity(),

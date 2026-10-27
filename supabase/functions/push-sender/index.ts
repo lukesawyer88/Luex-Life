@@ -26,9 +26,9 @@ const BUDGET_MS = 45_000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204 });
-  if (!fromSchedule(req)) return json({ error: "Not allowed" }, 401);
-  const began = Date.now();
   const db = serviceClient();
+  if (!(await fromSchedule(req, db))) return json({ error: "Not allowed" }, 401);
+  const began = Date.now();
   const now = new Date();
   const counts = { reminders: 0, leave: 0, weekly: 0, sent: 0, devicesGone: 0, failed: 0 };
 
@@ -196,10 +196,8 @@ Deno.serve(async (req) => {
     }
 
     // ---------------------------------------------------------------- send what's waiting
-    const pub = Deno.env.get("VAPID_PUBLIC_KEY");
-    const priv = Deno.env.get("VAPID_PRIVATE_KEY");
+    const { publicKey: pub, privateKey: priv } = await pushKeys(db);
     const subject = Deno.env.get("VAPID_SUBJECT") ?? "mailto:hello@luexgroup.com";
-    if (!pub || !priv) throw new Error("Push keys are not set");
     webpush.setVapidDetails(subject, pub, priv);
 
     while (Date.now() - began < BUDGET_MS) {
@@ -255,3 +253,13 @@ Deno.serve(async (req) => {
     return json({ ok: false }, 500);
   }
 });
+
+/** The push keys: made on the first run and kept in the database's private settings (never in code or chat) */
+async function pushKeys(db: ReturnType<typeof serviceClient>): Promise<{ publicKey: string; privateKey: string }> {
+  const { data } = await db.rpc("server_setting", { p_name: "vapid" });
+  if (typeof data === "string" && data) return JSON.parse(data);
+  const fresh = webpush.generateVAPIDKeys();
+  const { data: kept, error } = await db.rpc("save_server_setting", { p_name: "vapid", p_value: JSON.stringify(fresh) });
+  if (error || typeof kept !== "string") throw new Error("Couldn't save push keys");
+  return JSON.parse(kept);
+}

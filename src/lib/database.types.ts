@@ -153,6 +153,7 @@ export type Database = {
       create_share: { Args: { p_name: string; p_kind: string; p_people: string[]; p_show_notes: boolean; p_hours: number }; Returns: string };
       shared_calendar: { Args: { p_token: string; p_from: string; p_to: string }; Returns: Json };
       can_see_event: { Args: { e: string }; Returns: boolean };
+      push_public_key: { Args: Record<string, never>; Returns: string | null };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };

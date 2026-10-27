@@ -2,7 +2,6 @@
 // has been added to the home screen (an Apple rule).
 import { supabase } from "@/lib/supabase";
 
-const PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
 export function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || import.meta.env.DEV) return;
@@ -39,13 +38,14 @@ function keyBytes(b64: string): Uint8Array<ArrayBuffer> {
 }
 
 export async function turnPushOn(): Promise<void> {
-  if (!PUBLIC_KEY) throw new Error("Notifications aren't set up yet");
+  const { data: publicKey } = await supabase.rpc("push_public_key");
+  if (!publicKey) throw new Error("Notifications are still being set up. Please try again in a few minutes");
   if (!("serviceWorker" in navigator)) throw new Error("This browser can't show notifications");
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Notifications were not allowed. You can allow them in your browser settings");
   const reg = (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register("/sw.js"));
   await navigator.serviceWorker.ready;
-  const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(PUBLIC_KEY) }));
+  const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) }));
   const j = sub.toJSON();
   const { error } = await supabase.rpc("save_push_subscription", {
     p_endpoint: j.endpoint ?? "",
