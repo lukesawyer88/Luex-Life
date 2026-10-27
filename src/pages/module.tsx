@@ -5,6 +5,7 @@ import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { useFamilyState } from "@/lib/family-context";
 import { BoardPage } from "@/modules/board/board-page";
 import { CalendarPage } from "@/modules/calendar/calendar-page";
+import { FoodPage } from "@/modules/food/food-page";
 import { MODULE_BY_KEY } from "@/modules/registry";
 
 /** Placeholder for a module that is planned but not built yet. Real modules replace this per key. */
@@ -24,6 +25,7 @@ export function ModulePage() {
   }
   if (m.key === "calendar") return <CalendarPage />;
   if (m.key === "board") return <BoardPage />;
+  if (m.key === "food") return <FoodPage />;
   const Icon = m.icon;
   return (
     <Windows>

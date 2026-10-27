@@ -29,7 +29,7 @@ export function isPrivateAddress(ip: string): boolean {
 
 export class FeedError extends Error {}
 
-async function checkUrl(raw: string): Promise<URL> {
+export async function checkUrl(raw: string): Promise<URL> {
   let u: URL;
   try {
     u = new URL(raw.replace(/^webcal:\/\//i, "https://"));

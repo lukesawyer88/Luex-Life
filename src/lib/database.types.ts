@@ -196,6 +196,96 @@ export type Database = {
         { family_id: string; module_key: string; enabled?: boolean },
         { enabled?: boolean }
       >;
+      food_aisles: Table<
+        { id: string; family_id: string; name: string; position: number },
+        { family_id: string; name: string; position?: number },
+        { name?: string; position?: number }
+      >;
+      food_alert_sends: Table<
+        { stock_id: string; day: string },
+        { stock_id: string; day: string },
+        {  }
+      >;
+      food_avoid: Table<
+        { id: string; family_id: string; member_id: string; kind: string; label: string; created_by: string | null; created_at: string },
+        { family_id: string; member_id: string; kind: string; label: string },
+        {  }
+      >;
+      food_collections: Table<
+        { id: string; family_id: string; title: string; emoji: string | null; position: number; created_by: string | null; created_at: string },
+        { family_id: string; title: string; emoji?: string | null; position?: number },
+        { title?: string; emoji?: string | null; position?: number }
+      >;
+      food_diary: Table<
+        { id: string; family_id: string; member_id: string; day: string; slot: string; label: string; kcal: number | null; protein: number | null; carbs: number | null; fat: number | null; created_at: string },
+        { family_id: string; member_id: string; day?: string; slot?: string; label: string; kcal?: number | null; protein?: number | null; carbs?: number | null; fat?: number | null },
+        { day?: string; slot?: string; label?: string; kcal?: number | null; protein?: number | null; carbs?: number | null; fat?: number | null }
+      >;
+      food_import_log: Table<
+        { id: number; member_id: string; at: string },
+        { id?: number; member_id: string; at?: string },
+        {  }
+      >;
+      food_known_items: Table<
+        { id: string; family_id: string; name: string; name_key: string; aisle: string | null; unit: string | null; favourite: boolean; used_count: number; last_used: string; barcode: string | null },
+        { id?: string; family_id: string; name: string; name_key: string; aisle?: string | null; unit?: string | null; favourite?: boolean; used_count?: number; last_used?: string; barcode?: string | null },
+        { aisle?: string | null; unit?: string | null; favourite?: boolean }
+      >;
+      food_list_items: Table<
+        { id: string; list_id: string; family_id: string; name: string; quantity: number | null; unit: string | null; note: string; aisle: string | null; photo_path: string | null; assignee: string | null; recipe_ids: string[]; position: number; done_at: string | null; done_by: string | null; added_by: string | null; created_at: string },
+        { list_id: string; family_id: string; name: string; quantity?: number | null; unit?: string | null; note?: string; aisle?: string | null; photo_path?: string | null; assignee?: string | null; recipe_ids?: string[]; position?: number },
+        { name?: string; quantity?: number | null; unit?: string | null; note?: string; aisle?: string | null; photo_path?: string | null; assignee?: string | null; position?: number; done_at?: string | null }
+      >;
+      food_lists: Table<
+        { id: string; family_id: string; title: string; emoji: string | null; position: number; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; title: string; emoji?: string | null; position?: number },
+        { title?: string; emoji?: string | null; position?: number; archived_at?: string | null }
+      >;
+      food_lunches: Table<
+        { id: string; family_id: string; member_id: string; day: string; items: string[]; packed: boolean; notes: string; updated_by: string | null; updated_at: string },
+        { family_id: string; member_id: string; day: string; items?: string[]; packed?: boolean; notes?: string },
+        { items?: string[]; packed?: boolean; notes?: string }
+      >;
+      food_plan: Table<
+        { id: string; family_id: string; day: string; slot: string; recipe_id: string | null; title: string; servings: number | null; people: string[]; cook: string | null; leftover_of: string | null; takeaway_id: string | null; notes: string; position: number; status: string; requested_by: string | null; cal_event_id: string | null; created_by: string | null; created_at: string; updated_at: string },
+        { family_id: string; day: string; slot: string; recipe_id?: string | null; title?: string; servings?: number | null; people?: string[]; cook?: string | null; leftover_of?: string | null; takeaway_id?: string | null; notes?: string; position?: number; status?: string },
+        { day?: string; slot?: string; recipe_id?: string | null; title?: string; servings?: number | null; people?: string[]; cook?: string | null; leftover_of?: string | null; takeaway_id?: string | null; notes?: string; position?: number; status?: string; cal_event_id?: string | null }
+      >;
+      food_ratings: Table<
+        { id: string; recipe_id: string; member_id: string; family_id: string; value: number; note: string; created_at: string },
+        { recipe_id: string; member_id: string; family_id: string; value: number; note?: string },
+        { value?: number; note?: string }
+      >;
+      food_recipes: Table<
+        { id: string; family_id: string; title: string; description: string; photo_path: string | null; source_url: string | null; servings: number; prep_min: number | null; cook_min: number | null; ingredients: Json; steps: Json; tags: string[]; allergens: string[]; collections: string[]; nutrition: Json | null; notes: string; times_made: number; last_made: string | null; timeline: Json | null; created_by: string | null; created_at: string; updated_at: string; archived_at: string | null },
+        { family_id: string; title: string; description?: string; photo_path?: string | null; source_url?: string | null; servings?: number; prep_min?: number | null; cook_min?: number | null; ingredients?: Json; steps?: Json; tags?: string[]; allergens?: string[]; collections?: string[]; nutrition?: Json | null; notes?: string; timeline?: Json | null },
+        { title?: string; description?: string; photo_path?: string | null; source_url?: string | null; servings?: number; prep_min?: number | null; cook_min?: number | null; ingredients?: Json; steps?: Json; tags?: string[]; allergens?: string[]; collections?: string[]; nutrition?: Json | null; notes?: string; times_made?: number; last_made?: string | null; timeline?: Json | null; archived_at?: string | null }
+      >;
+      food_settings: Table<
+        { member_id: string; family_id: string; calories_on: boolean; kcal_target: number | null; updated_at: string },
+        { member_id: string; family_id: string; calories_on?: boolean; kcal_target?: number | null },
+        { calories_on?: boolean; kcal_target?: number | null }
+      >;
+      food_spend: Table<
+        { id: string; family_id: string; spent_on: string; amount: number; store: string | null; note: string; added_by: string | null; created_at: string },
+        { family_id: string; spent_on?: string; amount: number; store?: string | null; note?: string },
+        { spent_on?: string; amount?: number; store?: string | null; note?: string }
+      >;
+      food_stock: Table<
+        { id: string; family_id: string; name: string; place: string; quantity: number | null; unit: string | null; portions: number | null; use_by: string | null; low_at: number | null; barcode: string | null; from_recipe: string | null; nutrition: Json | null; added_by: string | null; created_at: string; updated_at: string; used_up_at: string | null },
+        { family_id: string; name: string; place?: string; quantity?: number | null; unit?: string | null; portions?: number | null; use_by?: string | null; low_at?: number | null; barcode?: string | null; from_recipe?: string | null; nutrition?: Json | null },
+        { name?: string; place?: string; quantity?: number | null; unit?: string | null; portions?: number | null; use_by?: string | null; low_at?: number | null; nutrition?: Json | null; used_up_at?: string | null }
+      >;
+      food_takeaway_orders: Table<
+        { id: string; takeaway_id: string; family_id: string; member_id: string; order_text: string; updated_at: string },
+        { takeaway_id: string; family_id: string; member_id: string; order_text: string },
+        { order_text?: string }
+      >;
+      food_takeaways: Table<
+        { id: string; family_id: string; name: string; phone: string | null; link: string | null; notes: string; last_ordered: string | null; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; name: string; phone?: string | null; link?: string | null; notes?: string },
+        { name?: string; phone?: string | null; link?: string | null; notes?: string; last_ordered?: string | null; archived_at?: string | null }
+      >;
       notification_prefs: Table<
         { member_id: string; family_id: string; changes: string; reminders: boolean; weekly: boolean; wishlists: boolean; updated_at: string },
         { member_id: string; family_id: string; changes?: string; reminders?: boolean; weekly?: boolean; wishlists?: boolean },
