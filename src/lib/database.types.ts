@@ -392,9 +392,9 @@ export type Database = {
         { name?: string; amount?: string | null; times?: string[]; start_on?: string; end_on?: string | null; remind?: string[]; notes?: string; deleted_at?: string | null }
       >;
       host_events: Table<
-        { id: string; family_id: string; event_id: string; notes: string; reminded_on: string | null; created_by: string | null; created_at: string },
-        { family_id: string; event_id: string; notes?: string },
-        { notes?: string }
+        { id: string; family_id: string; event_id: string; notes: string; reminded_on: string | null; created_by: string | null; created_at: string; remind_days: number },
+        { family_id: string; event_id: string; notes?: string; remind_days?: number },
+        { notes?: string; remind_days?: number }
       >;
       host_guests: Table<
         { id: string; family_id: string; host_id: string; name: string; people: number; status: string; dietary: string | null; notes: string; created_by: string | null; created_at: string; deleted_at: string | null },
@@ -657,9 +657,9 @@ export type Database = {
         { member_id?: string | null; title?: string; plan_kind?: string | null; starts_at?: string | null; ref?: string | null; place?: string | null; notes?: string; position?: number; done_at?: string | null; deleted_at?: string | null }
       >;
       trips: Table<
-        { id: string; family_id: string; event_id: string; emoji: string | null; notes: string; reminded_on: string | null; created_by: string | null; created_at: string },
-        { family_id: string; event_id: string; emoji?: string | null; notes?: string },
-        { emoji?: string | null; notes?: string }
+        { id: string; family_id: string; event_id: string; emoji: string | null; notes: string; reminded_on: string | null; created_by: string | null; created_at: string; kids_see_plans: boolean; remind_days: number },
+        { family_id: string; event_id: string; emoji?: string | null; notes?: string; kids_see_plans?: boolean; remind_days?: number },
+        { emoji?: string | null; notes?: string; kids_see_plans?: boolean; remind_days?: number }
       >;
       wish_claims: Table<
         { item_id: string; family_id: string; list_id: string; claimed_by: string | null; bought: boolean; claimed_at: string },

@@ -317,6 +317,7 @@ function HostForm({ existing, onClose, onSaved }: { existing: Hosting | null; on
   const [where, setWhere] = useState(existing?.event.location ?? "");
   const grownUps = useMemo(() => members.filter((m) => !m.archived_at && m.role !== "child"), [members]);
   const [hosts, setHosts] = useState<string[]>(existing ? existing.event.people.filter((id) => grownUps.some((m) => m.id === id)) : [me.id]);
+  const [remind, setRemind] = useState(existing?.remind_days ?? 1);
   const [busy, setBusy] = useState(false);
 
   async function save() {
@@ -333,9 +334,13 @@ function HostForm({ existing, onClose, onSaved }: { existing: Hosting | null; on
       let id = existing?.id;
       if (existing) {
         await saveEventChanges(existing.event, fields);
+        if (remind !== existing.remind_days) {
+          const { error } = await supabase.from("host_events").update({ remind_days: remind }).eq("id", existing.id);
+          if (error) throw error;
+        }
       } else {
         const ev = await insertEvent({ ...fields, family_id: family.id });
-        const { data, error } = await supabase.from("host_events").insert({ family_id: family.id, event_id: ev.id }).select("id").single();
+        const { data, error } = await supabase.from("host_events").insert({ family_id: family.id, event_id: ev.id, remind_days: remind }).select("id").single();
         if (error) {
           await saveEventChanges(ev, { deleted_at: new Date().toISOString() }, true).catch(() => undefined);
           throw error;
@@ -373,12 +378,17 @@ function HostForm({ existing, onClose, onSaved }: { existing: Hosting | null; on
         <Field label="Until"><Input data-testid="host-to" type="time" value={to} onChange={(e) => setTo(e.target.value)} className="h-12 w-32 text-base" /></Field>
       </div>
       <Field label="Where" hint="Optional. Leave empty for at home"><Input value={where} maxLength={200} onChange={(e) => setWhere(e.target.value)} placeholder="The village hall" className="h-12 text-base" /></Field>
-      <Field label="Who's hosting?" hint="The grown-ups hosting get a reminder the evening before">
+      <Field label="Who's hosting?" hint="The grown-ups hosting get the reminder">
         <div className="flex flex-wrap gap-2" data-testid="host-people">
           {grownUps.map((m) => {
             const on = hosts.includes(m.id);
             return <Chip key={m.id} on={on} onClick={() => setHosts(on ? hosts.filter((x) => x !== m.id) : [...hosts, m.id])} className="min-h-11 text-base"><MemberAvatar member={m} size="sm" className="size-6 ring-0 ring-offset-0" /> {m.display_name}</Chip>;
           })}
+        </div>
+      </Field>
+      <Field label="Reminder" hint="At 6pm: how many are coming and what's left to do">
+        <div className="flex flex-wrap gap-1.5" data-testid="host-remind">
+          {[0, 1, 2, 3].map((n) => <Chip key={n} on={remind === n} onClick={() => setRemind(n)} className="min-h-11">{n === 0 ? "Off" : n === 1 ? "The day before" : `${n} days before`}</Chip>)}
         </div>
       </Field>
       <div className="flex flex-wrap gap-2 pt-1">

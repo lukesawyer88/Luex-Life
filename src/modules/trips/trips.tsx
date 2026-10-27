@@ -137,7 +137,7 @@ function TripDetail({ t, onEdit }: { t: Trip; onEdit: () => void }) {
       <div className="flex gap-1.5">
         <Chip on={section === "pack"} onClick={() => setSection("pack")} className="min-h-11 text-base">🧳 Packing</Chip>
         {grownUp ? <Chip on={section === "todo"} onClick={() => setSection("todo")} className="min-h-11 text-base">✅ Before we go</Chip> : null}
-        <Chip on={section === "plan"} onClick={() => setSection("plan")} className="min-h-11 text-base">🎫 Plans</Chip>
+        {grownUp || t.kids_see_plans ? <Chip on={section === "plan"} onClick={() => setSection("plan")} className="min-h-11 text-base">🎫 Plans</Chip> : null}
       </div>
       {section === "pack" ? <Packing t={t} items={all.filter((i) => i.kind === "pack")} going={going} me={me} grownUp={grownUp} /> : null}
       {section === "todo" ? <Todos t={t} items={all.filter((i) => i.kind === "todo")} /> : null}
@@ -381,6 +381,9 @@ function TripForm({ existing, onClose, onSaved }: { existing: Trip | null; onClo
   const [end, setEnd] = useState(existing?.endDay ?? "");
   const [people, setPeople] = useState<string[]>(existing?.event.people ?? members.filter((m) => !m.archived_at).map((m) => m.id));
   const [emoji, setEmoji] = useState(existing?.emoji ?? "✈️");
+  const [kidsPlans, setKidsPlans] = useState(existing?.kids_see_plans ?? true);
+  const [remind, setRemind] = useState(existing?.remind_days ?? 2);
+  const hasKids = members.some((m) => m.role === "child" && !m.archived_at);
   const [busy, setBusy] = useState(false);
   const live = useMemo(() => members.filter((m) => !m.archived_at), [members]);
 
@@ -396,11 +399,11 @@ function TripForm({ existing, onClose, onSaved }: { existing: Trip | null; onClo
       let id = existing?.id;
       if (existing) {
         await saveEventChanges(existing.event, fields);
-        const { error } = await supabase.from("trips").update({ emoji }).eq("id", existing.id);
+        const { error } = await supabase.from("trips").update({ emoji, kids_see_plans: kidsPlans, remind_days: remind }).eq("id", existing.id);
         if (error) throw error;
       } else {
         const ev = await insertEvent({ ...fields, family_id: family.id });
-        const { data, error } = await supabase.from("trips").insert({ family_id: family.id, event_id: ev.id, emoji }).select("id").single();
+        const { data, error } = await supabase.from("trips").insert({ family_id: family.id, event_id: ev.id, emoji, kids_see_plans: kidsPlans, remind_days: remind }).select("id").single();
         if (error) {
           await saveEventChanges(ev, { deleted_at: new Date().toISOString() }, true).catch(() => undefined);
           throw error;
@@ -448,6 +451,17 @@ function TripForm({ existing, onClose, onSaved }: { existing: Trip | null; onClo
       <Field label="Picture">
         <div className="flex flex-wrap gap-1.5">{EMOJIS.map((e) => <Chip key={e} on={emoji === e} onClick={() => setEmoji(e)} className="min-h-11 min-w-11 justify-center text-xl">{e}</Chip>)}</div>
       </Field>
+      <Field label="Reminder" hint="At 6pm, to whoever's going, with what's still to pack">
+        <div className="flex flex-wrap gap-1.5" data-testid="trip-remind">
+          {[0, 1, 2, 3].map((n) => <Chip key={n} on={remind === n} onClick={() => setRemind(n)} className="min-h-11">{n === 0 ? "Off" : n === 1 ? "The day before" : `${n} days before`}</Chip>)}
+        </div>
+      </Field>
+      {hasKids ? (
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-base">
+          <input type="checkbox" data-testid="trip-kids-plans" checked={kidsPlans} onChange={(e) => setKidsPlans(e.target.checked)} className="size-5 accent-[var(--status-blue)]" />
+          Children can see the plans (flights, hotel, references)
+        </label>
+      ) : null}
       <p className="text-sm text-muted-foreground">It goes on the Calendar for everyone going, with a countdown. {start ? `${Math.max(0, Math.round((Date.parse(`${start}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86400000))} sleeps to go.` : ""}</p>
       <div className="flex flex-wrap gap-2 pt-1">
         <Button data-testid="trip-save" className="h-12 flex-1 rounded-full text-base font-semibold" disabled={busy || !title.trim() || !start} onClick={() => void save()}>{busy ? "Saving…" : "Save"}</Button>

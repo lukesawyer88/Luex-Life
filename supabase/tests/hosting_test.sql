@@ -25,7 +25,7 @@ declare
   ua uuid := gen_random_uuid(); up uuid := gen_random_uuid(); ug uuid := gen_random_uuid();
   uk uuid := gen_random_uuid(); ub uuid := gen_random_uuid();
   fa uuid; fb uuid; ann uuid; pat uuid; gran uuid; kid uuid; ben uuid;
-  e1 uuid; e2 uuid; ep uuid; eb uuid; h1 uuid; hp uuid; g1 uuid; i1 uuid; ek uuid; hk uuid; gone uuid; ik uuid; tok text; n int; t text; tz text; today date;
+  e1 uuid; e2 uuid; ep uuid; eb uuid; h1 uuid; hp uuid; g1 uuid; i1 uuid; ek uuid; hk uuid; gone uuid; ik uuid; e3 uuid; e4 uuid; tok text; n int; t text; tz text; today date;
 begin
   insert into auth.users (id, email, aud, role) values
     (ua, 'ann@test.dev', 'authenticated', 'authenticated'), (up, 'pat@test.dev', 'authenticated', 'authenticated'),
@@ -152,11 +152,17 @@ begin
   exception when others then perform pg_temp.chk(true, ''); end;
 
   -- ===== "tomorrow"
+  insert into public.cal_events (family_id, title, type, starts_at, ends_at, people) values (fa, 'Big dinner', 'social', (today + 3)::timestamp at time zone tz + interval '19 hours', (today + 3)::timestamp at time zone tz + interval '22 hours', array[ann]) returning id into e3;
+  insert into public.host_events (family_id, event_id, remind_days) values (fa, e3, 3);
+  insert into public.cal_events (family_id, title, type, starts_at, ends_at, people) values (fa, 'Small lunch', 'social', (today + 3)::timestamp at time zone tz + interval '12 hours', (today + 3)::timestamp at time zone tz + interval '14 hours', array[ann]) returning id into e4;
+  insert into public.host_events (family_id, event_id) values (fa, e4);
   perform pg_temp.sys();
   if tz is null then
     perform pg_temp.chk(false, 'an evening time zone was found for the reminder check');
   else
     perform public.queue_host_reminders(); perform public.queue_host_reminders();
+    perform pg_temp.chk((select count(*) from public.notifications where kind = 'hosting' and member_id = ann and title = 'Big dinner is on ' || to_char(today + 3, 'FMDay')) = 1, 'a plan set to remind 3 days before does, naming the day');
+    perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'hosting' and title like 'Small lunch%'), 'a plan reminded earlier than it asked');
     t := (select body from public.notifications where kind = 'hosting' and member_id = ann and title like 'Mia''s party%');
     perform pg_temp.chk((select count(*) from public.notifications where kind = 'hosting' and member_id in (ann, pat) and title like 'Mia''s party%') = 2, 'the hosts hear the night before, once');
     perform pg_temp.chk(t = '5 people coming, 1 thing still to get or do', 'the message says how many are coming and what''s left: ' || coalesce(t, ''));

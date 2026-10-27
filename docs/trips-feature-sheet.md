@@ -26,8 +26,8 @@ Agreed 27 Oct 2026. Module 11 (everyone; second release). Owner said "just build
 4. Day-by-day itinerary planning.
 
 ## Questions to settle after the build
-1. Should children see the plans (flights, hotel) or only packing and the countdown?
-2. Is the "two days to go" message the right timing? (A trip added the day before still gets it.)
+1. Settled: parents choose on each trip whether children see the plans (on by default).
+2. Settled: parents choose when the reminder comes (off, or 1 to 3 days before; 2 by default).
 
 ## Build status (27 Oct 2026)
 Built, tested and live (27 Oct 2026): database changes applied, reminders scheduled, live checks passed (rolled back), page and Home card switched on.
@@ -35,3 +35,5 @@ Built, tested and live (27 Oct 2026): database changes applied, reminders schedu
 Checks: 39 Trips database checks (every other module's checks still passing), 60 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 18 journey tests (adding a trip that goes on the Calendar with a countdown, the passport warning, packing for each person with a ready-made beach list, the before-we-go jobs, a flight with its time and reference, a child ticking and adding their own packing, ideas for days out, the Home card).
 
 Security review (Fable 5.1) fixes: a trip can only sit on a Calendar event a grown-up added (so a child can't change or remove it through their own event); a trip disappears with its Calendar event, or if the event stops being a trip; removed items stay removed; "Change" shows only to a parent or whoever added the event (the Calendar's own rule), and a clash with someone else's Calendar edit says so instead of overwriting it.
+
+Parents' choices added and live (27 Oct 2026): "Children can see the plans" and the reminder timing on each trip. 44 database checks, 20 journey tests.

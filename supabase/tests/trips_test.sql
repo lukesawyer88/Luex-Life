@@ -25,7 +25,7 @@ declare
   ua uuid := gen_random_uuid(); up uuid := gen_random_uuid(); ug uuid := gen_random_uuid();
   uk uuid := gen_random_uuid(); ub uuid := gen_random_uuid();
   fa uuid; fb uuid; ann uuid; pat uuid; gran uuid; kid uuid; ben uuid;
-  e1 uuid; e2 uuid; ep uuid; eb uuid; t1 uuid; t2 uuid; tp uuid; i1 uuid; i2 uuid; ik uuid; idea uuid; ek uuid; et uuid; tt uuid; gone uuid; tok text; n int; t text; tz text; today date;
+  e1 uuid; e2 uuid; ep uuid; eb uuid; t1 uuid; t2 uuid; tp uuid; i1 uuid; i2 uuid; ik uuid; idea uuid; ek uuid; et uuid; tt uuid; gone uuid; tq uuid; tok text; n int; t text; tz text; today date;
 begin
   insert into auth.users (id, email, aud, role) values
     (ua, 'ann@test.dev', 'authenticated', 'authenticated'), (up, 'pat@test.dev', 'authenticated', 'authenticated'),
@@ -172,6 +172,26 @@ begin
     perform pg_temp.chk(false, 'someone packed for a removed trip');
   exception when others then perform pg_temp.chk(true, ''); end;
 
+  -- ===== parents choose: plans hidden from children, and when the reminder comes
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.trips set kids_see_plans = false where id = t1;
+  perform pg_temp.act(uk, 'kid@test.dev');
+  perform pg_temp.chk(not exists (select 1 from public.trip_items where trip_id = t1 and kind = 'plan') and exists (select 1 from public.trip_items where trip_id = t1 and kind = 'pack'), 'a child sees plans the parents hid');
+  begin
+    update public.trips set kids_see_plans = true where id = t1;
+    perform pg_temp.chk((select kids_see_plans from public.trips where id = t1) = false, 'a child switched the plans back on');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.act(ug, 'gran@test.dev');
+  perform pg_temp.chk(exists (select 1 from public.trip_items where trip_id = t1 and kind = 'plan'), 'a grown-up sees the plans');
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.trips set kids_see_plans = true where id = t1;
+  insert into public.cal_events (family_id, title, type, all_day, starts_at, ends_at) values (fa, 'Quiet trip', 'trip', true, (today + 1)::timestamp at time zone tz, (today + 1)::timestamp at time zone tz) returning id into ek;
+  insert into public.trips (family_id, event_id, remind_days) values (fa, ek, 0) returning id into tq;
+  begin
+    update public.trips set remind_days = 9 where id = tq;
+    perform pg_temp.chk(false, 'a reminder 9 days before was saved');
+  exception when others then perform pg_temp.chk(true, ''); end;
+
   -- ===== "two days to go"
   perform pg_temp.sys();
   if tz is null then
@@ -184,6 +204,7 @@ begin
     perform pg_temp.chk((select body from public.notifications where kind = 'trip' and member_id = kid and title like 'Off to Spain%') like '2 things%', 'a child hears what''s left for them (their packing and the jobs)');
     perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'trip' and member_id = gran and title like 'Off to Spain%'), 'someone not going hears about the trip');
     perform pg_temp.chk(exists (select 1 from public.notifications where kind = 'trip' and title like 'Off to Day out%'), 'a trip added the day before still gets its reminder');
+    perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'trip' and title like 'Off to Quiet trip%'), 'a trip with its reminder off was reminded about');
   end if;
 
   -- ===== other families and visitors
