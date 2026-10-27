@@ -77,7 +77,7 @@ export const MODULES: ModuleConfig[] = [
   {
     key: "school", name: "School and Activities", icon: GraduationCap, group: "Kids", audience: "everyone", wave: 1, canSwitchOff: true,
     summary: "Homework, clubs, pickups and babysitters.",
-    includes: ["Homework and deadlines", "Clubs and activities", "Pickups and transport", "Childcare and babysitters"],
+    includes: ["What to bring each day", "Clubs and activities", "Pickups and drop-offs", "Forms, trip money and homework", "Babysitters"],
   },
   {
     key: "kids", name: "Kids' Space", icon: Smile, group: "Kids", audience: "everyone", wave: 2, canSwitchOff: true,
