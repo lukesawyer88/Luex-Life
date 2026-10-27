@@ -1,0 +1,30 @@
+# Luex Life – Trips and Holidays feature sheet
+
+Agreed 27 Oct 2026. Module 11 (everyone; second release). Owner said "just build, and we'll sort the logistics out after it's all built", so this follows the simple-first rules with no separate research round; open questions are listed at the end.
+
+## Decisions
+1. Simple on purpose: plan a trip, pack, and don't forget anything before you go.
+2. A trip is an ordinary Calendar "trip or holiday" event: the dates, who's going, where and the countdown live there (one place for dates). Trips adds packing, before-we-go jobs, the plans and ideas for days out.
+3. Nothing is connected to airlines, hotels or booking sites: plans are typed in (what, when, reference, where).
+4. Everyone who can see the trip's Calendar event sees the trip (a private event keeps the trip private). Grown-ups plan; everyone packs and ticks their own things; children add and tick their own packing.
+5. Push notifications only.
+
+## Built
+1. Trips: name, where, dates, who's going and an emoji; on the Calendar with a countdown.
+2. Packing: each person's own list and a shared list, with ready-made lists to add in one tap (essentials, beach, cold weather, baby and toddler, gadgets).
+3. Before we go: ready-made jobs (passports, travel insurance, pets, plants, post, bins, chargers, currency), ticked by any grown-up.
+4. Plans: travel, places to stay, car hire and activities, each with when, reference and where.
+5. Passport check: a warning when a traveller's passport in Documents runs out within six months of coming home (seen only by those who can see the passport).
+6. "Two days to go" message at 6pm, to whoever's going, with what's still to pack or do.
+7. Ideas for days out: anyone (children too) adds an idea, with where and a link; ticked when done.
+8. A countdown card on Home for the next trip.
+
+## Not built (could be added later)
+1. Sharing a trip with people outside the household.
+2. Holiday spending (Money handles budgets).
+3. Saving tickets and boarding passes as files (Documents can hold them).
+4. Day-by-day itinerary planning.
+
+## Questions to settle after the build
+1. Should children see the plans (flights, hotel) or only packing and the countdown?
+2. Is the "two days to go" message the right timing?

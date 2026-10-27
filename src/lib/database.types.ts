@@ -596,6 +596,21 @@ export type Database = {
         { family_id: string; member_id: string; delta: number; kind: string; note?: string },
         {  }
       >;
+      trip_ideas: Table<
+        { id: string; family_id: string; title: string; place: string | null; link: string | null; notes: string; done_at: string | null; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; title: string; place?: string | null; link?: string | null; notes?: string },
+        { title?: string; place?: string | null; link?: string | null; notes?: string; done_at?: string | null; deleted_at?: string | null }
+      >;
+      trip_items: Table<
+        { id: string; family_id: string; trip_id: string; kind: string; member_id: string | null; title: string; plan_kind: string | null; starts_at: string | null; ref: string | null; place: string | null; notes: string; position: number; done_at: string | null; done_by: string | null; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; trip_id: string; kind: string; member_id?: string | null; title: string; plan_kind?: string | null; starts_at?: string | null; ref?: string | null; place?: string | null; notes?: string; position?: number },
+        { member_id?: string | null; title?: string; plan_kind?: string | null; starts_at?: string | null; ref?: string | null; place?: string | null; notes?: string; position?: number; done_at?: string | null; deleted_at?: string | null }
+      >;
+      trips: Table<
+        { id: string; family_id: string; event_id: string; emoji: string | null; notes: string; reminded_on: string | null; created_by: string | null; created_at: string },
+        { family_id: string; event_id: string; emoji?: string | null; notes?: string },
+        { emoji?: string | null; notes?: string }
+      >;
       wish_claims: Table<
         { item_id: string; family_id: string; list_id: string; claimed_by: string | null; bought: boolean; claimed_at: string },
         { item_id: string },
