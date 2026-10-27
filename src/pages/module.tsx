@@ -10,6 +10,7 @@ import { MODULE_BY_KEY } from "@/modules/registry";
 const CalendarPage = lazy(() => import("@/modules/calendar/calendar-page").then((m) => ({ default: m.CalendarPage })));
 const BoardPage = lazy(() => import("@/modules/board/board-page").then((m) => ({ default: m.BoardPage })));
 const FoodPage = lazy(() => import("@/modules/food/food-page").then((m) => ({ default: m.FoodPage })));
+const MoneyPage = lazy(() => import("@/modules/money/money-page").then((m) => ({ default: m.MoneyPage })));
 
 function Loading() {
   return <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
@@ -33,6 +34,7 @@ export function ModulePage() {
   if (m.key === "calendar") return <Suspense fallback={<Loading />}><CalendarPage /></Suspense>;
   if (m.key === "board") return <Suspense fallback={<Loading />}><BoardPage /></Suspense>;
   if (m.key === "food") return <Suspense fallback={<Loading />}><FoodPage /></Suspense>;
+  if (m.key === "money") return <Suspense fallback={<Loading />}><MoneyPage /></Suspense>;
   const Icon = m.icon;
   return (
     <Windows>

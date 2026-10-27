@@ -25,6 +25,7 @@ create or replace function public.money_period_start(f uuid, d date)
 returns date language plpgsql stable security definer set search_path = '' as $$
 declare s public.money_settings%rowtype; cand date; last_day integer;
 begin
+  if public.my_family_id() is not null and f is distinct from public.my_family_id() then raise exception 'That change is not allowed'; end if;
   select * into s from public.money_settings where family_id = f;
   if not found or s.period = 'month' then return date_trunc('month', d)::date; end if;
   if s.four_weekly_anchor is not null then
