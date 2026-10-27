@@ -15,6 +15,12 @@ Updated 27 Oct 2026.
 10. **Make the app smaller to download** (about 1 MB now: split it so each module loads when opened).
 11. **Test on real phones** (iPhone and Android): touch, notifications, camera, offline.
 12. **Stronger-model security review** of the whole app before real families join.
+13. **Bigger uploads.** Supabase's free plan stops single files at 50 MB, which is about 1 minute of iPhone video. On the paid plan, raise the limit (Storage settings and the `board-media` bucket) so 3-minute videos fit, and switch large uploads to resumable uploads.
+14. **Clear out removed photos.** Removed photos and videos are hidden at once but their files stay in storage (and count towards the family's 50 GB) until a clean-up job deletes them. Add a nightly job (an Edge Function using the storage API) before launch.
+15. **Video conversion.** iPhone videos (HEVC .mov) don't play in some Windows browsers; the app shows "Download to watch". Converting them needs a paid service.
+16. **Printed year books.** The free PDF is built. Compare print-on-demand partners' real prices (posting straight to the family) and choose one.
+17. **Safeguarding adviser** on children's chats, location requests and journal (same adviser as Kids' Space).
+18. **Privacy policy wording**: Board messages are encrypted in transit and on the server and private to the family, but not end-to-end encrypted.
 
 ## Waiting on something
 1. **Forward an email to add an event** – needs an email address on the Luex domain (luexgroup.com is still on Wix).

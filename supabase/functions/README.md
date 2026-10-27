@@ -1,6 +1,6 @@
 # Luex Life server functions
 
-Two Supabase Edge Functions (Deno). Both run with the full-access (service) key, so each one checks who may see what itself.
+Three Supabase Edge Functions (Deno). Both run with the full-access (service) key, so each one checks who may see what itself.
 
 ## push-sender
 Runs every minute from the database schedule (`luex-push`). Each run it:
@@ -17,6 +17,9 @@ Brings in Google, Apple and Outlook calendars from their secret iCal (.ics) link
 - **From the app**: a parent's "Sync now" calls `supabase.functions.invoke("import-feeds", { body: { feedId } })`. The feed is read through row-level security as that parent, so only a parent who can see the import can sync it. It returns `{ ok, count, error }` and allows one sync a minute.
 
 Safety: the function only fetches https links. It refuses private, internal and cloud-metadata addresses, re-checks each redirect (3 at most), and stops at 10 seconds or 5 MB. Feed links are never logged.
+
+## album-share
+Shows one Family Board album to relatives without a login. The app calls `supabase.functions.invoke("album-share", { body: { token } })` from the public page `/a/<token>`. The database checks the token (`public.shared_album`: unrevoked, unexpired, album not archived) and lists the album's photos; the function then signs each file address for one hour. Only album photos are ever shown (never chat or memory photos). Tokens are never logged. Deploy with `verify_jwt` off (visitors have no login).
 
 ## Secrets (set on both functions)
 | Name | What |
