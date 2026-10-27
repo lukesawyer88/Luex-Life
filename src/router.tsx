@@ -19,6 +19,7 @@ import { ModulePage } from "@/pages/module";
 import { SettingsPage } from "@/pages/settings";
 import { SharedCalendarPage } from "@/pages/shared";
 import { SharedAlbumPage } from "@/pages/shared-album";
+import { SharedEmergencyPage } from "@/pages/shared-emergency";
 import { SetupPage } from "@/pages/setup";
 import { SignInPage } from "@/pages/sign-in";
 
@@ -100,6 +101,8 @@ const joinRoute = createRoute({
 const sharedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/s/$token", component: SharedCalendarPage });
 // a read-only album link for relatives (no sign-in)
 const sharedAlbumRoute = createRoute({ getParentRoute: () => rootRoute, path: "/a/$token", component: SharedAlbumPage });
+// the babysitter sheet (no sign-in)
+const sharedEmergencyRoute = createRoute({ getParentRoute: () => rootRoute, path: "/e/$token", component: SharedEmergencyPage });
 const appRoute = createRoute({ getParentRoute: () => rootRoute, id: "app", component: AppLayout });
 const homeRoute = createRoute({ getParentRoute: () => appRoute, path: "/", component: HomePage });
 const moduleRoute = createRoute({ getParentRoute: () => appRoute, path: "/m/$key", component: ModulePage });
@@ -112,6 +115,7 @@ const routeTree = rootRoute.addChildren([
   joinRoute,
   sharedRoute,
   sharedAlbumRoute,
+  sharedEmergencyRoute,
   appRoute.addChildren([homeRoute, moduleRoute, familyRoute, settingsRoute]),
 ]);
 

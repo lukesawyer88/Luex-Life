@@ -44,6 +44,6 @@ Agreed 27 Oct 2026. Module 9 of 15 (everyone). Research: ICE (In Case of Emergen
 6. Privacy of medical details – grown-ups can hide their conditions; the link never shows grown-ups' cards.
 
 ## Build status (27 Oct 2026)
-Built and tested; not live yet (waiting for the owner's yes to apply the database changes, then the page and babysitter link are added).
+Built and live (27 Oct 2026): database changes applied, the April and October check scheduled, then the page and babysitter link added. 60 live checks passed (rolled back).
 
 Checks: 60 Contacts and Emergency database checks (every other module's checks still passing), 87 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 27 journey tests (home essentials, contacts and who to call, reordering, adding from a contacts file, a child's card, hiding your own conditions, a pet, the other parent, a grandparent's own card, a child's view, the babysitter link and stopping it, the Wi-Fi only when ticked, the fridge sheet, no signal, the twice-a-year check). An independent security review found no way for the wrong person to see details, and 6 smaller problems, all fixed and tested: a stopped babysitter link can't be started again; hidden conditions never go on the printed sheet; the babysitter link shows an age rather than a birthday and no contact notes; removal times can't be changed; two people saving at once no longer shows an error.

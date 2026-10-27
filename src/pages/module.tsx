@@ -14,6 +14,7 @@ const MoneyPage = lazy(() => import("@/modules/money/money-page").then((m) => ({
 const RewardsPage = lazy(() => import("@/modules/rewards/rewards-page").then((m) => ({ default: m.RewardsPage })));
 const SchoolPage = lazy(() => import("@/modules/school/school-page").then((m) => ({ default: m.SchoolPage })));
 const DocumentsPage = lazy(() => import("@/modules/documents/documents-page").then((m) => ({ default: m.DocumentsPage })));
+const ContactsPage = lazy(() => import("@/modules/contacts/contacts-page").then((m) => ({ default: m.ContactsPage })));
 
 function Loading() {
   return <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
@@ -41,6 +42,7 @@ export function ModulePage() {
   if (m.key === "pocket") return <Suspense fallback={<Loading />}><RewardsPage /></Suspense>;
   if (m.key === "school") return <Suspense fallback={<Loading />}><SchoolPage /></Suspense>;
   if (m.key === "documents") return <Suspense fallback={<Loading />}><DocumentsPage /></Suspense>;
+  if (m.key === "contacts") return <Suspense fallback={<Loading />}><ContactsPage /></Suspense>;
   const Icon = m.icon;
   return (
     <Windows>
