@@ -235,6 +235,9 @@ function Items({ h, kind, items, grownUp }: { h: Hosting; kind: "get" | "do"; it
   const [v, setV] = useState("");
   const [who, setWho] = useState<string | null>(null);
   const people = useMemo(() => members.filter((m) => !m.archived_at), [members]);
+  // a job only goes to someone who can sign in and see this plan (the database checks the same)
+  const ev = h.event;
+  const canGet = people.filter((m) => m.user_id && (ev.visibility === "all" || ev.created_by_member === m.id || (ev.viewers ?? []).includes(m.id)));
   const sorted = [...items].sort((a, b) => Number(!!a.done_at) - Number(!!b.done_at) || a.created_at.localeCompare(b.created_at));
 
   async function add() {
@@ -284,7 +287,7 @@ function Items({ h, kind, items, grownUp }: { h: Hosting; kind: "get" | "do"; it
             <div className="flex flex-wrap items-center gap-1.5" data-testid="host-who">
               <span className="text-sm text-muted-foreground">For</span>
               <Chip on={who === null} onClick={() => setWho(null)} className="min-h-10">Anyone</Chip>
-              {people.map((m) => <Chip key={m.id} on={who === m.id} onClick={() => setWho(m.id)} className="min-h-10"><MemberAvatar member={m} size="sm" className="size-5 ring-0 ring-offset-0" /> {m.display_name}</Chip>)}
+              {canGet.map((m) => <Chip key={m.id} on={who === m.id} onClick={() => setWho(m.id)} className="min-h-10"><MemberAvatar member={m} size="sm" className="size-5 ring-0 ring-offset-0" /> {m.display_name}</Chip>)}
             </div>
           ) : null}
         </div>
@@ -312,9 +315,9 @@ function HostForm({ existing, onClose, onSaved }: { existing: Hosting | null; on
   const [from, setFrom] = useState(was?.time ?? "14:00");
   const [to, setTo] = useState(wasEnd?.time ?? "17:00");
   const [where, setWhere] = useState(existing?.event.location ?? "");
-  const [hosts, setHosts] = useState<string[]>(existing?.event.people ?? [me.id]);
-  const [busy, setBusy] = useState(false);
   const grownUps = useMemo(() => members.filter((m) => !m.archived_at && m.role !== "child"), [members]);
+  const [hosts, setHosts] = useState<string[]>(existing ? existing.event.people.filter((id) => grownUps.some((m) => m.id === id)) : [me.id]);
+  const [busy, setBusy] = useState(false);
 
   async function save() {
     if (!day) return void toast.error("Pick the day");
@@ -324,7 +327,9 @@ function HostForm({ existing, onClose, onSaved }: { existing: Hosting | null; on
       const starts = at(from || "00:00");
       let ends = at(to || from || "00:00");
       if (ends <= starts) ends = new Date(starts.getTime() + 3 * 3600_000);
-      const fields = { title: title.trim(), type: "social", all_day: false, starts_at: starts.toISOString(), ends_at: ends.toISOString(), people: hosts, location: where.trim() || null };
+      // children listed on the Calendar event stay on it; this form only picks the hosts
+      const others = existing ? existing.event.people.filter((id) => !grownUps.some((m) => m.id === id)) : [];
+      const fields = { title: title.trim(), type: "social", all_day: false, starts_at: starts.toISOString(), ends_at: ends.toISOString(), people: [...hosts, ...others], location: where.trim() || null };
       let id = existing?.id;
       if (existing) {
         await saveEventChanges(existing.event, fields);
@@ -368,7 +373,7 @@ function HostForm({ existing, onClose, onSaved }: { existing: Hosting | null; on
         <Field label="Until"><Input data-testid="host-to" type="time" value={to} onChange={(e) => setTo(e.target.value)} className="h-12 w-32 text-base" /></Field>
       </div>
       <Field label="Where" hint="Optional. Leave empty for at home"><Input value={where} maxLength={200} onChange={(e) => setWhere(e.target.value)} placeholder="The village hall" className="h-12 text-base" /></Field>
-      <Field label="Who's hosting?" hint="They get the reminder the evening before">
+      <Field label="Who's hosting?" hint="The grown-ups hosting get a reminder the evening before">
         <div className="flex flex-wrap gap-2" data-testid="host-people">
           {grownUps.map((m) => {
             const on = hosts.includes(m.id);

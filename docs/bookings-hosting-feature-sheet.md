@@ -23,7 +23,7 @@ Agreed 27 Oct 2026. Module 12 (everyone; second release). Built under "just buil
 1. Sending invitations or collecting replies from guests outside the household.
 2. Moving the "to get" list into the Food shopping list.
 3. Party budgets (Money handles budgets).
-4. Turning an existing Calendar party into a plan (for now, plan it from here).
+4. Turning an existing Calendar party into a plan (for now, plan it from here), or dropping a plan but keeping the event.
 
 ## Questions to settle after the build
 1. Should "to get" items go straight onto the Food shopping list instead of a separate list?
@@ -33,4 +33,6 @@ Agreed 27 Oct 2026. Module 12 (everyone; second release). Built under "just buil
 ## Build status (27 Oct 2026)
 Built and tested; not live yet.
 
-Checks: 29 Hosting database checks (every other module's checks still passing), 60 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 14 journey tests (planning a party that goes on the Calendar, a guest with numbers and dietary needs, the food summary, a shopping item, a job given to Mia who is told, Mia ticking it, a grandparent not offered Change, a booked table with its reference, the Home card).
+Checks: 32 Hosting database checks (every other module's checks still passing), 60 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 14 journey tests (planning a party that goes on the Calendar, a guest with numbers and dietary needs, the food summary, a shopping item, a job given to Mia who is told, Mia ticking it, a grandparent not offered Change, a booked table with its reference, the Home card).
+
+Security review (Fable 5.1): the Trips fixes hold for Hosting. Also fixed: a job only goes to someone who can sign in and see the plan; only jobs (not things to get) are given to people; plans can't sit on repeating Calendar events (use a single date); repeating bookings (weekly lessons) show with their next date; changing who has a job doesn't send a burst of messages; children listed on the Calendar event stay on it when the hosts change.

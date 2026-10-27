@@ -391,6 +391,26 @@ export type Database = {
         { family_id: string; host_id: string; kind: string; title: string; who?: string | null },
         { title?: string; who?: string | null; done_at?: string | null; deleted_at?: string | null }
       >;
+      kid_about: Table<
+        { child_id: string; family_id: string; answers: Json; updated_by: string | null; updated_at: string },
+        { child_id: string; family_id: string; answers?: Json },
+        { answers?: Json }
+      >;
+      kid_asks: Table<
+        { id: string; family_id: string; child_id: string; minutes: number; reason: string; status: string; answered_by: string | null; answered_at: string | null; created_at: string },
+        { family_id: string; child_id: string; minutes: number; reason?: string },
+        { status?: string }
+      >;
+      kid_milestones: Table<
+        { id: string; family_id: string; child_id: string; on_date: string; emoji: string | null; title: string; height_cm: number | null; notes: string; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; child_id: string; on_date: string; emoji?: string | null; title: string; height_cm?: number | null; notes?: string },
+        { on_date?: string; emoji?: string | null; title?: string; height_cm?: number | null; notes?: string; deleted_at?: string | null }
+      >;
+      kid_rules: Table<
+        { id: string; family_id: string; child_id: string; emoji: string | null; title: string; position: number; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; child_id: string; emoji?: string | null; title: string; position?: number },
+        { emoji?: string | null; title?: string; position?: number; deleted_at?: string | null }
+      >;
       money_accounts: Table<
         { id: string; family_id: string; name: string; kind: string; currency: string; opening_balance: number; owner: string | null; private_to: string | null; position: number; created_by: string | null; created_at: string; archived_at: string | null },
         { family_id: string; name: string; kind?: string; currency?: string; opening_balance?: number; owner?: string | null; private_to?: string | null; position?: number },

@@ -135,6 +135,22 @@ begin
     perform pg_temp.chk(false, 'a guest was added to a removed plan');
   exception when others then perform pg_temp.chk(true, ''); end;
 
+  -- ===== second review fixes
+  perform pg_temp.act(ua, 'ann@test.dev');
+  begin
+    insert into public.host_items (family_id, host_id, kind, title, who) values (fa, hp, 'do', 'Hide the cake', gran);
+    perform pg_temp.chk(false, 'a job was given to someone who can''t see the plan');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.host_items (family_id, host_id, kind, title, who) values (fa, h1, 'get', 'Crisps', kid);
+    perform pg_temp.chk(false, 'something to get was given to someone (only jobs are)');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  insert into public.cal_events (family_id, title, type, starts_at, ends_at, rrule) values (fa, 'Book club', 'social', now() + interval '3 days', now() + interval '3 days 2 hours', 'FREQ=WEEKLY') returning id into ek;
+  begin
+    insert into public.host_events (family_id, event_id) values (fa, ek);
+    perform pg_temp.chk(false, 'a plan was put on a repeating event');
+  exception when others then perform pg_temp.chk(true, ''); end;
+
   -- ===== "tomorrow"
   perform pg_temp.sys();
   if tz is null then

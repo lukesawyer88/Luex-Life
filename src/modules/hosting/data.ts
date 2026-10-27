@@ -8,6 +8,7 @@ import type { Database } from "@/lib/database.types";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import type { CalEvent } from "@/modules/calendar/data";
+import { expand } from "@/modules/calendar/recurrence";
 import { dayKey } from "@/modules/calendar/time";
 
 type Row<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
@@ -92,13 +93,22 @@ export function useHostSummaries(ids: string[]) {
   });
 }
 
-/** Upcoming Calendar events with a booking reference (restaurants, activities, services) */
-export function useBookings(fromIso: string, toIso: string) {
+/** Upcoming Calendar events with a booking reference (restaurants, lessons, services): the next date of each,
+ *  so weekly swimming lessons show once, with their next date */
+export function useBookings(from: Date, to: Date) {
   const { family } = useFamilyState();
+  const f = from.toISOString();
   return useQuery({
-    queryKey: ["cal", family.id, "bookings", fromIso.slice(0, 10)],
-    queryFn: () => rows<CalEvent>(supabase.from("cal_events").select("*").eq("family_id", family.id).is("deleted_at", null)
-      .not("booking_ref", "is", null).neq("booking_ref", "").gte("ends_at", fromIso).lte("starts_at", toIso).order("starts_at")),
+    queryKey: ["cal", family.id, "bookings", f.slice(0, 13)],
+    queryFn: async () => {
+      const list = await rows<CalEvent>(supabase.from("cal_events").select("*").eq("family_id", family.id).is("deleted_at", null)
+        .lt("starts_at", to.toISOString()).or(`rrule.not.is.null,ends_at.gte.${f},recurrence_of.not.is.null`).limit(3000));
+      const seen = new Set<string>();
+      return expand(list, from, to, family.timezone)
+        .filter((o) => o.event.booking_ref?.trim())
+        .sort((x, y) => x.start.getTime() - y.start.getTime())
+        .filter((o) => (seen.has(o.seriesId) ? false : (seen.add(o.seriesId), true)));
+    },
   });
 }
 

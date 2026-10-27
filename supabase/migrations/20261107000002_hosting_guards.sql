@@ -14,7 +14,7 @@ begin
       -- hosting sits on a Calendar "party or visit" event in this household that I can see, added here by a grown-up
       if not exists (select 1 from public.cal_events e join public.family_members m on m.id = e.created_by_member
                      where e.id = new.event_id and e.family_id = new.family_id and e.type = 'social' and e.deleted_at is null
-                       and e.source = 'manual' and m.role in ('parent', 'member'))
+                       and e.source = 'manual' and e.rrule is null and m.role in ('parent', 'member'))
          or not public.can_see_event(new.event_id) then
         raise exception 'That change is not allowed';
       end if;
@@ -37,8 +37,14 @@ begin
     if tg_op = 'UPDATE' and (new.host_id <> old.host_id or new.kind <> old.kind or new.created_by is distinct from old.created_by) then
       raise exception 'That change is not allowed';
     end if;
-    if new.who is not null and (tg_op = 'INSERT' or new.who is distinct from old.who)
-       and not public.members_in_family(new.family_id, array[new.who]) then raise exception 'Pick someone in this household'; end if;
+    if new.who is not null and (tg_op = 'INSERT' or new.who is distinct from old.who) then
+      if not public.members_in_family(new.family_id, array[new.who]) then raise exception 'Pick someone in this household'; end if;
+      -- only someone who can sign in and see the plan, or they'd never know
+      if not exists (select 1 from public.cal_events e join public.host_events h on h.event_id = e.id join public.family_members m on m.id = new.who
+                     where h.id = new.host_id and m.user_id is not null and public.member_sees_event(e, new.who)) then
+        raise exception 'Pick someone who can see this plan';
+      end if;
+    end if;
     -- children only tick (or untick) a job given to them
     if not adult then
       if tg_op = 'INSERT' or old.who is distinct from me or new.title <> old.title or new.who is distinct from old.who
@@ -71,7 +77,7 @@ begin
   if tg_op = 'UPDATE' and new.who is not distinct from old.who then return null; end if;
   select ev.* into e from public.cal_events ev join public.host_events h on h.event_id = ev.id where h.id = new.host_id;
   if e.id is null or not public.member_sees_event(e, new.who) then return null; end if;
-  perform public.notify(new.who, 'hosting', 'A job for ' || e.title, new.title, '/m/bookings?host=' || new.host_id, null, interval '0');
+  perform public.notify(new.who, 'hosting', 'A job for ' || e.title, new.title, '/m/bookings?host=' || new.host_id, 'host:' || new.id, interval '1 minute');
   return null;
 end $$;
 revoke all on function public.after_host_item() from public, anon, authenticated;

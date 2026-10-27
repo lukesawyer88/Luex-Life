@@ -15,7 +15,7 @@ begin
       -- so a child can't later change or remove the trip by changing their own event
       if not exists (select 1 from public.cal_events e join public.family_members m on m.id = e.created_by_member
                      where e.id = new.event_id and e.family_id = new.family_id and e.type = 'trip' and e.deleted_at is null
-                       and e.source = 'manual' and m.role in ('parent', 'member'))
+                       and e.source = 'manual' and e.rrule is null and m.role in ('parent', 'member'))
          or not public.can_see_event(new.event_id) then
         raise exception 'That change is not allowed';
       end if;

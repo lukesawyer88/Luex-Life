@@ -43,7 +43,8 @@ create table public.host_items (
   done_by uuid references public.family_members (id) on delete set null,
   created_by uuid references public.family_members (id) on delete set null,
   created_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  check (kind = 'do' or who is null)
 );
 create index host_items_host_idx on public.host_items (host_id);
 
