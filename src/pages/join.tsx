@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { friendlyError } from "@/lib/family";
 import { supabase } from "@/lib/supabase";
-import { ROLE_LABEL } from "@/modules/registry";
+import { roleLabel } from "@/lib/household";
 
 export function JoinPage() {
   const { t } = useSearch({ from: "/join" });
@@ -59,7 +59,7 @@ export function JoinPage() {
   }
 
   return (
-    <CentreCard title={`Join ${inv.family_name}`} subtitle={`You've been invited as ${inv.display_name} (${ROLE_LABEL[inv.role as keyof typeof ROLE_LABEL].toLowerCase()}).`}>
+    <CentreCard title={`Join ${inv.family_name}`} subtitle={`You've been invited as ${inv.display_name} (${roleLabel(inv.role, "family").toLowerCase()}).`}>
       {user ? (
         <div className="space-y-3">
           <p className="text-center text-sm">Signed in as <strong>{user.email}</strong></p>

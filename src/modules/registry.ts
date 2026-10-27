@@ -40,22 +40,22 @@ export type ModuleConfig = {
 
 export const MODULES: ModuleConfig[] = [
   {
-    key: "home", name: "Home", icon: LayoutDashboard, group: "Today", audience: "everyone", wave: 1, canSwitchOff: false,
+    key: "home", name: "Home", icon: LayoutDashboard, group: "Every day", audience: "everyone", wave: 1, canSwitchOff: false,
     summary: "Today for the whole family, and the Luex assistant.",
     includes: ["A simple Today view for each person", "The Luex assistant", "Local and school information", "Weather and activity ideas"],
   },
   {
-    key: "calendar", name: "Family Calendar", icon: CalendarDays, group: "Family", audience: "everyone", wave: 1, canSwitchOff: false,
+    key: "calendar", name: "Family Calendar", icon: CalendarDays, group: "Every day", audience: "everyone", wave: 1, canSwitchOff: false,
     summary: "One calendar for everyone, with colour-and-icon dots when you zoom out.",
     includes: ["Calendar, chores, routines and cleaning rota", "A reminders tab", "Birthdays, school terms, events and tickets", "Wish lists on each birthday and Christmas"],
   },
   {
-    key: "board", name: "Family Board", icon: MessagesSquare, group: "Family", audience: "everyone", wave: 1, canSwitchOff: false,
+    key: "board", name: "Family Board", icon: MessagesSquare, group: "Every day", audience: "everyone", wave: 1, canSwitchOff: false,
     summary: "Messages, photos and notes everyone can add to.",
     includes: ["Messages and photos", "Lists and notes", "Family goals", "Journal and memories"],
   },
   {
-    key: "food", name: "Food", icon: CookingPot, group: "Food", audience: "everyone", wave: 1, canSwitchOff: true,
+    key: "food", name: "Food", icon: CookingPot, group: "Every day", audience: "everyone", wave: 1, canSwitchOff: true,
     summary: "Meal plan, recipes and the shopping list in one place.",
     includes: ["Meal plan and recipes", "Shopping lists", "Pantry and fridge stock", "Takeaway favourites and packed lunches"],
   },
@@ -85,27 +85,27 @@ export const MODULES: ModuleConfig[] = [
     includes: ["Kids' own accounts and calendars", "Screen time rules", "Milestones"],
   },
   {
-    key: "health", name: "Family Health", icon: HeartPulse, group: "Health", audience: "parents", wave: 2, canSwitchOff: true,
+    key: "health", name: "Family Health", icon: HeartPulse, group: "Home", audience: "parents", wave: 2, canSwitchOff: true,
     summary: "Appointments and reminders. Dates only, never medical records.",
     includes: ["Appointments (dates only)", "Medication reminders", "Wellbeing check-ins", "Vaccination and check-up schedule"],
   },
   {
-    key: "documents", name: "Documents and Papers", icon: FileText, group: "Admin", audience: "adults", wave: 1, canSwitchOff: true,
+    key: "documents", name: "Documents and Papers", icon: FileText, group: "Home", audience: "adults", wave: 1, canSwitchOff: true,
     summary: "Where your important papers are, and when they run out.",
     includes: ["Documents", "Passport and ID expiry dates", "Where important papers are kept"],
   },
   {
-    key: "contacts", name: "Contacts and Emergency", icon: BookUser, group: "Admin", audience: "everyone", wave: 1, canSwitchOff: false,
+    key: "contacts", name: "Contacts and Emergency", icon: BookUser, group: "Home", audience: "everyone", wave: 1, canSwitchOff: false,
     summary: "Who to call and what to do, for everyone in the house and the babysitter.",
     includes: ["Emergency cards with tap-to-call", "Family contacts", "A babysitter view", "Reminder that it never replaces 999 or 112"],
   },
   {
-    key: "trips", name: "Trips and Holidays", icon: Plane, group: "Travel", audience: "everyone", wave: 2, canSwitchOff: true,
+    key: "trips", name: "Trips and Holidays", icon: Plane, group: "Away", audience: "everyone", wave: 2, canSwitchOff: true,
     summary: "Plan trips, packing lists and days out.",
     includes: ["Trip planning", "Packing lists", "Days out and bucket list"],
   },
   {
-    key: "bookings", name: "Bookings and Hosting", icon: Ticket, group: "Travel", audience: "everyone", wave: 2, canSwitchOff: true,
+    key: "bookings", name: "Bookings and Hosting", icon: Ticket, group: "Away", audience: "everyone", wave: 2, canSwitchOff: true,
     summary: "Restaurants, activities, services and guests.",
     includes: ["Restaurants, activities and services", "Guests and visitors"],
   },
@@ -129,6 +129,9 @@ export function visibleModules(role: Role | undefined, switchedOff: ReadonlySet<
   });
 }
 
+/** The menu's groups, in order: what's used every day first, then the rest */
+export const GROUP_ORDER = ["Every day", "Money", "Kids", "Home", "Away"];
+
 export function groupModules(list: ModuleConfig[]): { group: string; modules: ModuleConfig[] }[] {
   const out: { group: string; modules: ModuleConfig[] }[] = [];
   for (const m of list) {
@@ -136,7 +139,8 @@ export function groupModules(list: ModuleConfig[]): { group: string; modules: Mo
     if (last) last.modules.push(m);
     else out.push({ group: m.group, modules: [m] });
   }
-  return out;
+  const rank = (g: string) => (GROUP_ORDER.includes(g) ? GROUP_ORDER.indexOf(g) : GROUP_ORDER.length);
+  return out.sort((a, b) => rank(a.group) - rank(b.group));
 }
 
 export const ROLE_LABEL: Record<Role, string> = { parent: "Parent", member: "Adult", child: "Child" };

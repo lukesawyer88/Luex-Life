@@ -4,6 +4,7 @@ import { Camera, UserPlus } from "lucide-react";
 import { MemberAvatar } from "@/components/member-avatar";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { useFamilyState } from "@/lib/family-context";
+import { homeWord, kindOf } from "@/lib/household";
 import { WhatsForDinner } from "@/modules/food/whats-for-dinner";
 import { MedicineNow } from "@/modules/health/home-card";
 import { BinsToday } from "@/modules/home-care/home-card";
@@ -43,12 +44,13 @@ function greeting(): string {
 }
 
 export function HomePage() {
-  const { me, members, isParent } = useFamilyState();
+  const { me, members, isParent, family } = useFamilyState();
+  const word = homeWord(kindOf(family));
   const today = new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "long" });
 
   const todo: { to: "/family"; icon: typeof Camera; text: string }[] = [];
   if (!me.avatar_path) todo.push({ to: "/family", icon: Camera, text: "Add your picture" });
-  if (isParent && members.length < 2) todo.push({ to: "/family", icon: UserPlus, text: "Add the rest of your family" });
+  if (isParent && members.length < 2) todo.push({ to: "/family", icon: UserPlus, text: `Add the rest of your ${word}` });
 
   return (
     <Windows>
@@ -63,7 +65,7 @@ export function HomePage() {
         <TodayOnHome />
         <div className="lg:hidden"><ModuleCards part="rest" /></div>
 
-        <h3 className="mb-2 text-sm font-semibold">Your family</h3>
+        <h3 className="mb-2 text-sm font-semibold">Your {word}</h3>
         <ul className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
           {members.map((m) => (
             <li key={m.id} className="glass-tile flex items-center gap-3 p-3">

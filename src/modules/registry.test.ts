@@ -21,7 +21,8 @@ describe("module registry", () => {
     expect(keys).toContain("calendar");
   });
 
-  it("keeps groups in the order of the list", () => {
-    expect(groupModules(MODULES).map((g) => g.group)[0]).toBe("Today");
+  it("groups the menu with every-day modules first, then money, kids, home and away", () => {
+    expect(groupModules(MODULES).map((g) => g.group)).toEqual(["Every day", "Money", "Kids", "Home", "Away"]);
+    expect(groupModules(MODULES)[0].modules.map((m) => m.key)).toEqual(["home", "calendar", "board", "food"]);
   });
 });

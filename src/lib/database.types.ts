@@ -217,9 +217,9 @@ export type Database = {
         { revoked_at?: string | null }
       >;
       families: Table<
-        { id: string; name: string; owner_id: string; signup_source: string; created_at: string; archived_at: string | null; timezone: string; calendar_prefs: Json; weather_place: string | null; weather_lat: number | null; weather_lon: number | null },
-        { id?: string; name: string; owner_id: string; signup_source?: string; created_at?: string; archived_at?: string | null; timezone?: string; calendar_prefs?: Json; weather_place?: string | null; weather_lat?: number | null; weather_lon?: number | null },
-        { name?: string; timezone?: string; calendar_prefs?: Json; weather_place?: string | null; weather_lat?: number | null; weather_lon?: number | null }
+        { id: string; name: string; owner_id: string; signup_source: string; created_at: string; archived_at: string | null; timezone: string; calendar_prefs: Json; weather_place: string | null; weather_lat: number | null; weather_lon: number | null; household_kind: string },
+        { id?: string; name: string; owner_id: string; signup_source?: string; created_at?: string; archived_at?: string | null; timezone?: string; calendar_prefs?: Json; weather_place?: string | null; weather_lat?: number | null; weather_lon?: number | null; household_kind?: string },
+        { name?: string; timezone?: string; calendar_prefs?: Json; weather_place?: string | null; weather_lat?: number | null; weather_lon?: number | null; household_kind?: string }
       >;
       family_invites: Table<
         { id: string; family_id: string; member_id: string | null; email: string; role: string; display_name: string; token_hash: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_by: string; created_at: string },

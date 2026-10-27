@@ -64,6 +64,20 @@ begin
   exception when others then passes := passes + 1; end;
   insert into public.family_modules (family_id, module_key, enabled) values (fa, 'food', false);
   passes := passes + 1;
+  -- the app saves a switch as "insert, or update if it's there", naming every column
+  insert into public.family_modules (family_id, module_key, enabled) values (fa, 'food', true)
+    on conflict (family_id, module_key) do update set family_id = excluded.family_id, module_key = excluded.module_key, enabled = excluded.enabled;
+  select count(*) into n from public.family_modules where family_id = fa and module_key = 'food' and enabled;
+  if n = 1 then passes := passes + 1; else fails := fails + 1; rep := rep || E'\nFAIL: a parent could not save a module switch'; end if;
+  begin update public.family_modules set family_id = fb where family_id = fa and module_key = 'food'; exception when others then null; end;
+  select count(*) into n from public.family_modules where family_id = fa and module_key = 'food';
+  if n = 1 then passes := passes + 1; else fails := fails + 1; rep := rep || E'\nFAIL: a parent moved a module switch to another family'; end if;
+  update public.families set household_kind = 'couple' where id = fa;
+  select count(*) into n from public.families where id = fa and household_kind = 'couple';
+  if n = 1 then passes := passes + 1; else fails := fails + 1; rep := rep || E'\nFAIL: a parent could not say who lives here'; end if;
+  begin update public.families set household_kind = 'castle' where id = fa; fails := fails + 1; rep := rep || E'\nFAIL: a made-up household kind was saved';
+  exception when others then passes := passes + 1; end;
+  update public.families set household_kind = 'family' where id = fa;
   begin perform 1 from (select token_hash from public.family_invites) s; fails := fails + 1; rep := rep || E'\nFAIL: invite token is readable';
   exception when others then passes := passes + 1; end;
   begin update public.family_members set user_id = b where id = tom; fails := fails + 1; rep := rep || E'\nFAIL: a parent can set a login on a profile directly';
@@ -119,6 +133,9 @@ begin
   exception when others then passes := passes + 1; end;
   begin insert into public.family_modules (family_id, module_key, enabled) values (fa, 'money', false); fails := fails + 1; rep := rep || E'\nFAIL: a child switched a module';
   exception when others then passes := passes + 1; end;
+  update public.families set household_kind = 'solo' where id = fa;
+  select count(*) into n from public.families where id = fa and household_kind = 'family';
+  if n = 1 then passes := passes + 1; else fails := fails + 1; rep := rep || E'\nFAIL: a child changed who lives here'; end if;
   select count(*) into n from public.family_invites; if n = 0 then passes := passes + 1; else fails := fails + 1; rep := rep || E'\nFAIL: a child reads invites'; end if;
   select count(*) into n from public.audit_log; if n = 0 then passes := passes + 1; else fails := fails + 1; rep := rep || E'\nFAIL: a child reads the audit log'; end if;
   select count(*) into n from public.family_members where family_id = fa; if n >= 4 then passes := passes + 1; else fails := fails + 1; rep := rep || E'\nFAIL: a child cannot see the family'; end if;

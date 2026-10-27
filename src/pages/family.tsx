@@ -18,10 +18,27 @@ import { squareJpeg } from "@/lib/image";
 import { supabase } from "@/lib/supabase";
 import { useDesktop } from "@/lib/use-desktop";
 import { cn } from "@/lib/utils";
-import { ROLE_LABEL, type Role } from "@/modules/registry";
+import { homeWord, isFamily, kindOf, roleLabel as kindRoleLabel, type HouseholdKind } from "@/lib/household";
 
-function roleLabel(r: string) {
-  return ROLE_LABEL[r as Role] ?? r;
+function roleLabel(r: string, kind: HouseholdKind) {
+  return kindRoleLabel(r, kind);
+}
+
+/** The role choices, worded for the household */
+function RoleOptions({ kind, invite }: { kind: HouseholdKind; invite?: boolean }) {
+  return isFamily(kind) ? (
+    <>
+      <SelectItem value="parent">{invite ? "Parent (partner)" : "Parent (can see and change everything)"}</SelectItem>
+      <SelectItem value="member">Adult (grandparent, babysitter, relative)</SelectItem>
+      <SelectItem value="child">Child</SelectItem>
+    </>
+  ) : (
+    <>
+      <SelectItem value="parent">Organiser (can see and change everything, including money)</SelectItem>
+      <SelectItem value="member">Member (sees the shared things, not money or papers)</SelectItem>
+      <SelectItem value="child">Child</SelectItem>
+    </>
+  );
 }
 
 /* ------------------------------------------------------------------ edit one person */
@@ -85,7 +102,7 @@ function MemberEditor({ member, onDone }: { member: Member; onDone: () => void }
   }
 
   async function removePerson() {
-    if (!window.confirm(`Remove ${member.display_name} from the family?`)) return;
+    if (!window.confirm(`Remove ${member.display_name} from the ${homeWord(kindOf(family))}?`)) return;
     setBusy(true);
     try {
       const { error } = await supabase.from("family_members").update({ archived_at: new Date().toISOString() }).eq("id", member.id);
@@ -121,7 +138,7 @@ function MemberEditor({ member, onDone }: { member: Member; onDone: () => void }
               <Camera className="mr-2 size-4" />
               {member.avatar_path ? "Change picture" : "Add a picture"}
             </Button>
-            <p className="mt-1 text-xs text-muted-foreground">Only your family can see it.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Only your {homeWord(kindOf(family))} can see it.</p>
           </div>
         ) : null}
       </div>
@@ -144,14 +161,12 @@ function MemberEditor({ member, onDone }: { member: Member; onDone: () => void }
           <Select value={role} onValueChange={setRole}>
             <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="parent">Parent (can see and change everything)</SelectItem>
-              <SelectItem value="member">Adult (grandparent, babysitter, relative)</SelectItem>
-              <SelectItem value="child">Child</SelectItem>
+              <RoleOptions kind={kindOf(family)} />
             </SelectContent>
           </Select>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">{roleLabel(member.role)}</p>
+        <p className="text-sm text-muted-foreground">{roleLabel(member.role, kindOf(family))}</p>
       )}
       {!member.user_id ? <p className="text-xs text-muted-foreground">This profile is managed by a parent and has no login.</p> : null}
 
@@ -161,7 +176,7 @@ function MemberEditor({ member, onDone }: { member: Member; onDone: () => void }
             {busy ? <Loader2 className="size-4 animate-spin" /> : "Save"}
           </Button>
           {isParent && !isMe ? (
-            <Button type="button" variant="ghost" className="h-11 rounded-full text-destructive" onClick={removePerson} disabled={busy}>Remove from family</Button>
+            <Button type="button" variant="ghost" className="h-11 rounded-full text-destructive" onClick={removePerson} disabled={busy}>Remove from the {homeWord(kindOf(family))}</Button>
           ) : null}
         </div>
       ) : null}
@@ -292,7 +307,7 @@ function InviteDialog({ open, onOpenChange, profiles }: { open: boolean; onOpenC
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Invite someone to log in</DialogTitle>
-          <DialogDescription>They join your family with this email address. The link works once and lasts 7 days.</DialogDescription>
+          <DialogDescription>They join your {homeWord(kindOf(family))} with this email address. The link works once and lasts 7 days.</DialogDescription>
         </DialogHeader>
         {link ? (
           <div className="space-y-3">
@@ -338,9 +353,7 @@ function InviteDialog({ open, onOpenChange, profiles }: { open: boolean; onOpenC
                   <Select value={role} onValueChange={setRole}>
                     <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="parent">Parent (partner)</SelectItem>
-                      <SelectItem value="member">Adult (grandparent, babysitter, relative)</SelectItem>
-                      <SelectItem value="child">Child</SelectItem>
+                      <RoleOptions kind={kindOf(family)} invite />
                     </SelectContent>
                   </Select>
                 </div>
@@ -418,7 +431,7 @@ export function FamilyPage() {
                 <MemberAvatar member={m} />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">{m.display_name}{m.id === me.id ? " (you)" : ""}</span>
-                  <span className="block text-xs text-muted-foreground">{roleLabel(m.role)}{m.user_id ? "" : " · no login"}</span>
+                  <span className="block text-xs text-muted-foreground">{roleLabel(m.role, kindOf(family))}{m.user_id ? "" : " · no login"}</span>
                 </span>
               </button>
             </li>
@@ -432,7 +445,7 @@ export function FamilyPage() {
               {invites.data.map((i, n) => (
                 <li key={i.id} className="glass-tile flex min-h-14 items-center gap-3 p-3">
                   <span className="min-w-0 flex-1 text-sm">
-                    <span className="block truncate font-medium">{n + 1}. {i.display_name} · {roleLabel(i.role)}</span>
+                    <span className="block truncate font-medium">{n + 1}. {i.display_name} · {roleLabel(i.role, kindOf(family))}</span>
                     <span className="block truncate text-xs text-muted-foreground">{i.email} · expires {new Date(i.expires_at).toLocaleDateString("en-IE", { day: "numeric", month: "short" })}</span>
                   </span>
                   <Button size="icon" variant="ghost" className="size-11 rounded-full" aria-label={`Cancel the invite for ${i.display_name}`} onClick={() => void cancelInvite(i.id)}>

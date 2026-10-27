@@ -11,6 +11,8 @@ import { useAuth } from "@/lib/auth";
 import { EXTRAS, setExtra, useExtrasOn } from "@/lib/extras";
 import { friendlyError } from "@/lib/family";
 import { useFamilyState } from "@/lib/family-context";
+import { HOUSEHOLD_KINDS, homeWord, kindOf, moduleName, setHouseholdKind, type HouseholdKind } from "@/lib/household";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { MODULES } from "@/modules/registry";
 
@@ -20,6 +22,20 @@ export function SettingsPage() {
   const qc = useQueryClient();
   const [name, setName] = useState(family.name);
   const extrasOn = useExtrasOn().data;
+  const kind = kindOf(family);
+  const word = homeWord(kind);
+
+  async function changeKind(k: HouseholdKind) {
+    if (k === kind) return;
+    try {
+      await setHouseholdKind(family.id, k);
+    } catch (e) {
+      toast.error(friendlyError(e as Error));
+      return;
+    }
+    await Promise.all([qc.invalidateQueries({ queryKey: ["family", family.id] }), qc.invalidateQueries({ queryKey: ["modules", family.id] })]);
+    toast.success("Saved. The modules have been switched to suit");
+  }
 
   async function rename() {
     const { error } = await supabase.from("families").update({ name: name.trim() }).eq("id", family.id);
@@ -28,7 +44,7 @@ export function SettingsPage() {
       return;
     }
     await qc.invalidateQueries({ queryKey: ["family", family.id] });
-    toast.success("Family name saved");
+    toast.success("Name saved");
   }
 
   async function toggle(key: string, enabled: boolean) {
@@ -63,19 +79,34 @@ export function SettingsPage() {
           </section>
 
           {isParent ? (
+            <section className="glass-tile space-y-3 p-4" data-testid="settings-kind">
+              <h2 className="text-sm font-semibold">Who lives here?</h2>
+              <p className="text-xs text-muted-foreground">This switches on the modules that suit you and changes words like "family" and "parent". You can still switch modules on or off below.</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {HOUSEHOLD_KINDS.map((k) => (
+                  <button key={k.key} type="button" aria-pressed={kind === k.key} onClick={() => void changeKind(k.key)} data-testid={`settings-kind-${k.key}`}
+                    className={cn("flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border p-2 text-sm font-semibold", kind === k.key ? "border-transparent bg-[var(--tile-active)] text-[var(--tile-active-fg)]" : "border-[var(--surface-border)] bg-[var(--surface)]")}>
+                    <span className="text-2xl" aria-hidden>{k.emoji}</span>{k.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {isParent ? (
             <section className="glass-tile space-y-3 p-4">
-              <h2 className="text-sm font-semibold">Family name</h2>
+              <h2 className="text-sm font-semibold">{word === "family" ? "Family name" : "Household name"}</h2>
               <div className="flex gap-2">
-                <Input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="h-11" aria-label="Family name" />
+                <Input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="h-11" aria-label="Name" />
                 <Button className="h-11 rounded-full" onClick={rename} disabled={!name.trim() || name.trim() === family.name}>Save</Button>
               </div>
             </section>
           ) : null}
 
           <section className="glass-tile p-4">
-            <h2 className="mb-1 text-sm font-semibold">What does your family use?</h2>
+            <h2 className="mb-1 text-sm font-semibold">What does your {word} use?</h2>
             <p className="mb-3 text-xs text-muted-foreground">
-              {isParent ? "Switch off what you don't need. Nothing is deleted, and you can switch it back on any time." : "Only a parent can change this."}
+              {isParent ? "Switch off what you don't need. Nothing is deleted, and you can switch it back on any time." : (word === "family" ? "Only a parent can change this." : "Only an organiser can change this.")}
             </p>
             <ul className="divide-y divide-border">
               {MODULES.map((m) => {
@@ -86,8 +117,8 @@ export function SettingsPage() {
                   <li key={m.key} className="flex min-h-12 items-center gap-3 py-2">
                     <Icon className="size-5 shrink-0 text-muted-foreground" />
                     <Label htmlFor={id} className="flex-1 text-sm font-medium">
-                      {m.name}
-                      {m.audience !== "everyone" ? <span className="ml-2 text-xs font-normal text-muted-foreground">{m.audience === "parents" ? "parents only" : "grown-ups only"}</span> : null}
+                      {moduleName(m, kind)}
+                      {m.audience !== "everyone" ? <span className="ml-2 text-xs font-normal text-muted-foreground">{m.audience === "parents" ? (word === "family" ? "parents only" : "organisers only") : "grown-ups only"}</span> : null}
                     </Label>
                     <Switch id={id} checked={on} disabled={!isParent || !m.canSwitchOff} onCheckedChange={(v) => void toggle(m.key, v)} />
                   </li>
@@ -101,12 +132,12 @@ export function SettingsPage() {
             <p className="mb-3 text-xs text-muted-foreground">
               {isParent
                 ? "Luex keeps things simple. Switch on extras only if your household wants them. Nothing is lost when they're off."
-                : "Only a parent can change this."}
+                : (word === "family" ? "Only a parent can change this." : "Only an organiser can change this.")}
             </p>
             <div className="space-y-4">
               {MODULES.filter((m) => !switchedOff.has(m.key) && EXTRAS.some((x) => x.module === m.key)).map((m) => (
                 <div key={m.key}>
-                  <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{m.name}</h3>
+                  <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{moduleName(m, kind)}</h3>
                   <ul className="divide-y divide-border">
                     {EXTRAS.filter((x) => x.module === m.key).map((x) => {
                       const id = `extra-${x.key}`;
