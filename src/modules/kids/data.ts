@@ -147,7 +147,7 @@ export const dateWords = (k: string) => new Date(`${k}T12:00:00Z`).toLocaleDateS
 
 export function errMsg(e: unknown): string {
   const m = e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e);
-  if (/kid_asks_one_open|duplicate key/i.test(m)) return "You've already asked. Wait for an answer";
+  if (/kid_asks_one_open/i.test(m)) return "You've already asked. Wait for an answer";
   if (/fetch|network/i.test(m)) return "No signal. Try again in a moment";
   if (/row-level|permission/i.test(m)) return "That change is not allowed";
   return m.length < 120 ? m : "Something went wrong. Try again";

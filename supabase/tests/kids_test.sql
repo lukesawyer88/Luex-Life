@@ -102,6 +102,21 @@ begin
   exception when others then perform pg_temp.chk(true, ''); end;
   perform pg_temp.sys();
   perform pg_temp.chk((select count(*) from public.notifications where kind = 'kids' and member_id = kid and title = 'Yes, 30 more minutes') = 1, 'the child hears yes');
+  -- an ask can't be answered once it has run out
+  perform pg_temp.act(uk2, 'sib@test.dev');
+  insert into public.kid_asks (family_id, child_id, minutes) values (fa, sib, 15) returning id into a2;
+  perform pg_temp.sys(); update public.kid_asks set created_at = now() - interval '5 hours' where id = a2;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  begin
+    update public.kid_asks set status = 'yes' where id = a2;
+    perform pg_temp.chk(false, 'an ask was answered hours after it ran out');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.act(ub, 'ben@test.dev');
+  perform pg_temp.chk(not exists (select 1 from public.kid_asks where family_id = fa), 'another family sees our asks');
+  begin
+    perform public.kid_in_family(fa, kid);
+    perform pg_temp.chk(false, 'another family could check who our children are');
+  exception when others then perform pg_temp.chk(true, ''); end;
   -- an unanswered ask lapses after 3 hours
   perform pg_temp.act(uk, 'kid@test.dev');
   insert into public.kid_asks (family_id, child_id, minutes) values (fa, kid, 15) returning id into a2;
@@ -148,6 +163,14 @@ begin
     perform pg_temp.chk(false, 'a removed milestone came back');
   exception when others then perform pg_temp.chk(true, ''); end;
   perform pg_temp.act(up, 'pat@test.dev');
+  begin
+    insert into public.kid_milestones (family_id, child_id, on_date, title) values (fa, baby, current_date - 400, 'Before born');
+    perform pg_temp.chk(false, 'a milestone before the child was born was saved');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.kid_milestones (family_id, child_id, on_date, title) values (fa, gran, current_date, 'Grown-up milestone');
+    perform pg_temp.chk(false, 'a milestone was saved for a grown-up');
+  exception when others then perform pg_temp.chk(true, ''); end;
   update public.kid_milestones set title = 'First proper steps' where id = m1;
   perform pg_temp.chk((select title from public.kid_milestones where id = m1) = 'First proper steps', 'a parent changes any milestone');
 

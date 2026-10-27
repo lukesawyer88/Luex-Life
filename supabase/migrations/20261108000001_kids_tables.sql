@@ -78,8 +78,8 @@ create or replace function public.kid_in_family(f uuid, c uuid)
 returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.family_members where id = c and family_id = f and role = 'child' and archived_at is null)
 $$;
-revoke all on function public.kid_in_family(uuid, uuid) from public, anon;
-grant execute on function public.kid_in_family(uuid, uuid) to authenticated;
+-- only the guard uses it (never granted, so another household can't ask who our children are)
+revoke all on function public.kid_in_family(uuid, uuid) from public, anon, authenticated;
 
 alter table public.kid_rules enable row level security;
 alter table public.kid_asks enable row level security;

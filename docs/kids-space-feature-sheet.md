@@ -26,10 +26,13 @@ Agreed 27 Oct 2026. Module 9 (everyone; second release). Built under "just build
 ## Questions to settle after the build
 1. Should brothers and sisters see each other's screen time rules?
 2. Should grandparents (and other grown-ups) be able to answer "more time" asks, or only parents?
+5. The Board's journal (hidden under More features) also has milestones. Keep milestones here only?
 3. Do you want a drawing pad for younger children?
 4. Safeguarding adviser: the same review as for children's chats (on the to-do list).
 
 ## Build status (27 Oct 2026)
 Built and tested; not live yet.
 
-Checks: 42 Kids' Space database checks (every other module's checks still passing), 69 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 17 journey tests (rules, Mia asking for more time, a parent saying yes from Home, Mia seeing the answer, a milestone and a height with her age, Mia filling in all about me, Gran reading it but not changing it).
+Checks: 47 Kids' Space database checks (every other module's checks still passing), 69 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 17 journey tests (rules, Mia asking for more time, a parent saying yes from Home, Mia seeing the answer, a milestone and a height with her age, Mia filling in all about me, Gran reading it but not changing it).
+
+Security review (Fable 5.1) fixes: another household can no longer check who our children are; an ask can't be answered after it runs out (3 hours); a second parent answering is told "Already answered"; two people filling in "all about me" at once no longer shows the wrong message; grown-ups who aren't parents don't see an empty asks section; no milestones before a child's birthday; repeated asks are grouped into one message.

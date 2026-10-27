@@ -109,7 +109,7 @@ function ScreenTime({ child }: { child: Member }) {
         {role !== "child" ? <p className="text-xs text-muted-foreground">These are the household's rules. Luex can't switch devices off; use the phone's own screen time settings for that.</p> : null}
       </section>
 
-      <section className="space-y-2">
+      {parent || isMe ? <section className="space-y-2">
         <h2 className="text-lg font-bold">{isMe ? "Want more time?" : "Asks for more time"}</h2>
         {open ? (
           <AskCard ask={open} child={child} canAnswer={parent} />
@@ -119,7 +119,7 @@ function ScreenTime({ child }: { child: Member }) {
           </p>
         ) : !isMe ? <p className="text-base text-muted-foreground">Nothing asked today.</p> : null}
         {isMe && !open ? <Button data-testid="ask-open" className="h-14 rounded-full px-6 text-lg font-semibold" onClick={() => setAsking(true)}>🙏 Ask for more time</Button> : null}
-      </section>
+      </section> : null}
 
       <Sheet open={adding} onOpenChange={setAdding} title="Add a rule">
         {adding ? <RuleForm onAdd={async (e, t) => { await addRule(e, t); setAdding(false); }} /> : null}
@@ -321,9 +321,11 @@ function AboutMe({ child }: { child: Member }) {
     setBusy(true);
     const clean: Record<string, string> = {};
     for (const q of QUESTIONS) { const v = (draft[q.key] ?? "").trim().slice(0, 80); if (v) clean[q.key] = v; }
-    const { error } = about.data
+    let { error } = about.data
       ? await supabase.from("kid_about").update({ answers: clean }).eq("child_id", child.id)
       : await supabase.from("kid_about").insert({ family_id: family.id, child_id: child.id, answers: clean });
+    // someone else filled it in first: save over it
+    if (error && /kid_about_pkey|duplicate key/i.test(error.message)) ({ error } = await supabase.from("kid_about").update({ answers: clean }).eq("child_id", child.id));
     setBusy(false);
     if (error) return void toast.error(errMsg(error));
     await refreshKids(qc, family.id);

@@ -376,6 +376,21 @@ export type Database = {
         { ref_id: string; for_date: string; kind: string },
         {  }
       >;
+      health_checks: Table<
+        { id: string; family_id: string; person_id: string; title: string; due_on: string; every_months: number | null; last_done_on: string | null; done_at: string | null; notes: string; reminded_on: string | null; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; person_id: string; title: string; due_on: string; every_months?: number | null; notes?: string },
+        { title?: string; due_on?: string; every_months?: number | null; last_done_on?: string | null; done_at?: string | null; notes?: string; deleted_at?: string | null }
+      >;
+      health_doses: Table<
+        { id: string; family_id: string; med_id: string; on_date: string; at_time: string; reminded_at: string | null; given_at: string | null; given_by: string | null },
+        { family_id: string; med_id: string; on_date: string; at_time: string; given_at?: string | null },
+        { family_id?: string; med_id?: string; on_date?: string; at_time?: string; given_at?: string | null }
+      >;
+      health_meds: Table<
+        { id: string; family_id: string; person_id: string; name: string; amount: string | null; times: string[]; start_on: string; end_on: string | null; remind: string[]; notes: string; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; person_id: string; name: string; amount?: string | null; times: string[]; start_on: string; end_on?: string | null; remind?: string[]; notes?: string },
+        { name?: string; amount?: string | null; times?: string[]; start_on?: string; end_on?: string | null; remind?: string[]; notes?: string; deleted_at?: string | null }
+      >;
       host_events: Table<
         { id: string; family_id: string; event_id: string; notes: string; reminded_on: string | null; created_by: string | null; created_at: string },
         { family_id: string; event_id: string; notes?: string },

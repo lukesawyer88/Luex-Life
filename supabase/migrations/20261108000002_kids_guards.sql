@@ -27,12 +27,15 @@ begin
       if n >= 10 then raise exception 'That''s a lot of asks today. Try again tomorrow'; end if;
       new.status := 'asked'; new.answered_by := null; new.answered_at := null; new.created_at := now();
     else
-      if old.status <> 'asked' or new.status not in ('yes', 'no') then raise exception 'That change is not allowed'; end if;
+      if old.status <> 'asked' then raise exception 'Already answered'; end if;
+      if new.status not in ('yes', 'no') then raise exception 'That change is not allowed'; end if;
+      if old.created_at < now() - interval '3 hours' then raise exception 'That ask has run out'; end if;
       new.answered_by := me; new.answered_at := now();
     end if;
 
   elsif tg_table_name = 'kid_milestones' then
     if new.on_date > (now() at time zone 'utc')::date + 1 then raise exception 'Pick a day that has happened'; end if;
+    if new.on_date < (select birthday from public.family_members where id = new.child_id) then raise exception 'That''s before their birthday'; end if;
     if tg_op = 'INSERT' then new.created_by := me; new.created_at := now(); new.deleted_at := null;
     else
       -- parents change any; everyone else only what they added
@@ -62,7 +65,7 @@ begin
   if tg_op = 'INSERT' then
     for p in select id from public.family_members where family_id = new.family_id and role = 'parent' and archived_at is null and user_id is not null loop
       perform public.notify(p, 'kids', kid || ' asks for ' || new.minutes || ' more minutes',
-        case when new.reason = '' then 'Screen time' else new.reason end, '/m/kids?tab=screen&child=' || new.child_id, null, interval '0');
+        case when new.reason = '' then 'Screen time' else new.reason end, '/m/kids?tab=screen&child=' || new.child_id, 'kidask:' || new.child_id, interval '0');
     end loop;
   elsif new.status is distinct from old.status and new.status in ('yes', 'no') then
     perform public.notify(new.child_id, 'kids',
