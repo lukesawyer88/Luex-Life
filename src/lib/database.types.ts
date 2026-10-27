@@ -11,6 +11,116 @@ export type Database = {
         { id?: number; family_id: string; actor?: string | null; action: string; detail?: Json; created_at?: string },
         {  }
       >;
+      board_acks: Table<
+        { id: string; message_id: string; member_id: string; family_id: string; acked_at: string },
+        { message_id: string; member_id: string; family_id: string },
+        {  }
+      >;
+      board_album_shares: Table<
+        { id: string; family_id: string; album_id: string; label: string; token_hash: string; expires_at: string; revoked_at: string | null; last_used_at: string | null; created_by: string | null; created_at: string },
+        { id?: string; family_id: string; album_id: string; label: string; token_hash: string; expires_at: string; revoked_at?: string | null; last_used_at?: string | null; created_by?: string | null; created_at?: string },
+        { revoked_at?: string | null }
+      >;
+      board_albums: Table<
+        { id: string; family_id: string; title: string; kind: string; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; title: string; kind?: string },
+        { title?: string; archived_at?: string | null }
+      >;
+      board_goal_steps: Table<
+        { id: string; goal_id: string; family_id: string; text: string; position: number; done_at: string | null; done_by: string | null },
+        { goal_id: string; family_id: string; text: string; position?: number },
+        { text?: string; position?: number; done_at?: string | null }
+      >;
+      board_goals: Table<
+        { id: string; family_id: string; title: string; emoji: string | null; target: number | null; unit: string | null; progress: number; due_on: string | null; people: string[]; stars: number; done_at: string | null; done_by: string | null; created_by: string | null; created_at: string; updated_at: string; archived_at: string | null },
+        { family_id: string; title: string; emoji?: string | null; target?: number | null; unit?: string | null; progress?: number; due_on?: string | null; people?: string[]; stars?: number },
+        { title?: string; emoji?: string | null; target?: number | null; unit?: string | null; progress?: number; due_on?: string | null; people?: string[]; stars?: number; done_at?: string | null; archived_at?: string | null }
+      >;
+      board_list_items: Table<
+        { id: string; list_id: string; family_id: string; text: string; assignee: string | null; position: number; done_at: string | null; done_by: string | null; created_by: string | null; created_at: string },
+        { list_id: string; family_id: string; text: string; assignee?: string | null; position?: number },
+        { text?: string; assignee?: string | null; position?: number; done_at?: string | null }
+      >;
+      board_lists: Table<
+        { id: string; family_id: string; title: string; emoji: string | null; kind: string; is_template: boolean; position: number; created_by: string | null; created_at: string; updated_at: string; archived_at: string | null },
+        { family_id: string; title: string; emoji?: string | null; kind?: string; is_template?: boolean; position?: number },
+        { title?: string; emoji?: string | null; is_template?: boolean; position?: number; archived_at?: string | null }
+      >;
+      board_locations: Table<
+        { message_id: string; family_id: string; thread_id: string; lat: number; lng: number; accuracy: number | null; expires_at: string },
+        { message_id: string; family_id: string; thread_id: string; lat: number; lng: number; accuracy?: number | null; expires_at?: string },
+        {  }
+      >;
+      board_media: Table<
+        { id: string; family_id: string; owner: string | null; thread_id: string | null; message_id: string | null; album_id: string | null; memory_id: string | null; path: string; thumb_path: string | null; kind: string; mime: string; bytes: number; width: number | null; height: number | null; duration_s: number | null; caption: string; people: string[]; taken_at: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; thread_id?: string | null; message_id?: string | null; album_id?: string | null; memory_id?: string | null; path: string; thumb_path?: string | null; kind: string; mime: string; width?: number | null; height?: number | null; duration_s?: number | null; caption?: string; people?: string[]; taken_at?: string | null },
+        { album_id?: string | null; caption?: string; people?: string[]; taken_at?: string | null; deleted_at?: string | null }
+      >;
+      board_memories: Table<
+        { id: string; family_id: string; author: string | null; kind: string; title: string; body: string; happened_on: string; people: string[]; milestone_for: string | null; prompt_id: string | null; prompt_text: string | null; audience: string; created_at: string; updated_at: string; deleted_at: string | null },
+        { family_id: string; kind?: string; title?: string; body?: string; happened_on?: string; people?: string[]; milestone_for?: string | null; prompt_id?: string | null; audience?: string },
+        { title?: string; body?: string; happened_on?: string; people?: string[]; audience?: string; deleted_at?: string | null }
+      >;
+      board_messages: Table<
+        { id: string; family_id: string; thread_id: string; author: string | null; kind: string; body: string; reply_to: string | null; mentions: string[]; kudos_to: string | null; ask_member: string | null; sticker: string | null; client_id: string | null; pinned_at: string | null; pinned_by: string | null; edited_at: string | null; deleted_at: string | null; deleted_by: string | null; activity_at: string; created_at: string },
+        { family_id: string; thread_id: string; kind?: string; body?: string; reply_to?: string | null; mentions?: string[]; kudos_to?: string | null; ask_member?: string | null; sticker?: string | null; client_id?: string | null },
+        { body?: string; mentions?: string[]; pinned_at?: string | null; deleted_at?: string | null }
+      >;
+      board_notes: Table<
+        { id: string; family_id: string; author: string | null; body: string; colour: string; pinned: boolean; created_at: string; updated_at: string; deleted_at: string | null },
+        { family_id: string; body: string; colour?: string; pinned?: boolean },
+        { body?: string; colour?: string; pinned?: boolean; deleted_at?: string | null }
+      >;
+      board_poll_options: Table<
+        { id: string; message_id: string; family_id: string; label: string; on_date: string | null; position: number },
+        { id?: string; message_id: string; family_id: string; label: string; on_date?: string | null; position?: number },
+        {  }
+      >;
+      board_poll_votes: Table<
+        { id: string; option_id: string; message_id: string; member_id: string; family_id: string; created_at: string },
+        { option_id: string; message_id: string; member_id: string; family_id: string },
+        {  }
+      >;
+      board_polls: Table<
+        { message_id: string; family_id: string; question: string; kind: string; multi: boolean; closed_at: string | null; event_id: string | null },
+        { message_id: string; family_id: string; question: string; kind?: string; multi?: boolean; closed_at?: string | null; event_id?: string | null },
+        { closed_at?: string | null; event_id?: string | null }
+      >;
+      board_prompt_sends: Table<
+        { member_id: string; day: string; prompt_id: string | null; sent_at: string },
+        { member_id: string; day: string; prompt_id?: string | null; sent_at?: string },
+        {  }
+      >;
+      board_prompts: Table<
+        { id: string; family_id: string | null; text: string; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id?: string | null; text: string },
+        { archived_at?: string | null }
+      >;
+      board_reactions: Table<
+        { id: string; message_id: string; member_id: string; family_id: string; emoji: string; created_at: string },
+        { message_id: string; member_id: string; family_id: string; emoji: string },
+        {  }
+      >;
+      board_settings: Table<
+        { member_id: string; family_id: string; chat: boolean; private_chats: boolean; photos: boolean; voice: boolean; location: boolean; parents_can_read: boolean; journal_prompts: boolean; journal_time: string; journal_parents_see: boolean; quiet_from: string | null; quiet_to: string | null; alerts: string; updated_at: string },
+        { member_id: string; family_id: string; chat?: boolean; private_chats?: boolean; photos?: boolean; voice?: boolean; location?: boolean; parents_can_read?: boolean; journal_prompts?: boolean; journal_time?: string; journal_parents_see?: boolean; quiet_from?: string | null; quiet_to?: string | null; alerts?: string; updated_at?: string },
+        { chat?: boolean; private_chats?: boolean; photos?: boolean; voice?: boolean; location?: boolean; parents_can_read?: boolean; journal_prompts?: boolean; journal_time?: string; journal_parents_see?: boolean; quiet_from?: string | null; quiet_to?: string | null; alerts?: string }
+      >;
+      board_thread_people: Table<
+        { id: string; thread_id: string; member_id: string; family_id: string; added_at: string },
+        { id?: string; thread_id: string; member_id: string; family_id: string; added_at?: string },
+        {  }
+      >;
+      board_thread_state: Table<
+        { id: string; thread_id: string; member_id: string; family_id: string; last_read_at: string; muted: boolean },
+        { id?: string; thread_id: string; member_id: string; family_id: string; last_read_at?: string; muted?: boolean },
+        {  }
+      >;
+      board_threads: Table<
+        { id: string; family_id: string; kind: string; title: string | null; emoji: string | null; direct_key: string | null; created_by: string | null; created_at: string; last_message_at: string; archived_at: string | null },
+        { id?: string; family_id: string; kind: string; title?: string | null; emoji?: string | null; direct_key?: string | null; created_by?: string | null; created_at?: string; last_message_at?: string; archived_at?: string | null },
+        { title?: string | null; emoji?: string | null; archived_at?: string | null }
+      >;
       cal_comments: Table<
         { id: string; family_id: string; event_id: string; member_id: string | null; body: string | null; photo_path: string | null; created_at: string; deleted_at: string | null },
         { family_id: string; event_id: string; body?: string | null; photo_path?: string | null },
@@ -154,6 +264,20 @@ export type Database = {
       shared_calendar: { Args: { p_token: string; p_from: string; p_to: string }; Returns: Json };
       can_see_event: { Args: { e: string }; Returns: boolean };
       push_public_key: { Args: Record<string, never>; Returns: string | null };
+      board_family_thread: { Args: Record<string, never>; Returns: string };
+      board_open_direct: { Args: { p_other: string }; Returns: string };
+      board_create_group: { Args: { p_title: string; p_emoji: string; p_people: string[] }; Returns: string };
+      board_set_group_people: { Args: { p_thread: string; p_people: string[] }; Returns: undefined };
+      board_leave_group: { Args: { p_thread: string }; Returns: undefined };
+      board_mark_read: { Args: { p_thread: string }; Returns: undefined };
+      board_set_mute: { Args: { p_thread: string; p_muted: boolean }; Returns: undefined };
+      board_unread: { Args: Record<string, never>; Returns: { thread_id: string; unread: number; last_message_at: string; muted: boolean }[] };
+      board_create_poll: { Args: { p_thread: string; p_question: string; p_kind: string; p_multi: boolean; p_options: Json; p_client_id: string | null }; Returns: string };
+      board_share_location: { Args: { p_thread: string; p_reply_to: string | null; p_lat: number; p_lng: number; p_accuracy: number; p_client_id: string | null }; Returns: string };
+      board_storage: { Args: Record<string, never>; Returns: { used: number; allowance: number }[] };
+      board_create_album_share: { Args: { p_album: string; p_label: string; p_days: number }; Returns: string };
+      board_search: { Args: { p_q: string }; Returns: { kind: string; id: string; ref: string | null; title: string; snippet: string; at: string }[] };
+      board_todays_prompt: { Args: Record<string, never>; Returns: { prompt_id: string; text: string }[] };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };

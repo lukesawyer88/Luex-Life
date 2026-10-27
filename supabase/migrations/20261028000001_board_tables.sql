@@ -202,6 +202,8 @@ create table public.board_media (
   album_id uuid references public.board_albums (id) on delete set null,
   memory_id uuid references public.board_memories (id) on delete cascade,
   path text not null unique check (char_length(path) <= 300),
+  -- a small preview made on the device (the original is never shrunk)
+  thumb_path text check (char_length(thumb_path) <= 300),
   kind text not null check (kind in ('photo', 'video', 'voice', 'drawing')),
   mime text not null check (char_length(mime) <= 100),
   bytes bigint not null default 0 check (bytes >= 0),

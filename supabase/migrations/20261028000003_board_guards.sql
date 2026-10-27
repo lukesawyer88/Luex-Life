@@ -346,6 +346,10 @@ begin
     if new.album_id is not null and not exists (select 1 from public.board_albums where id = new.album_id and family_id = new.family_id) then
       raise exception 'That change is not allowed';
     end if;
+    -- the preview sits next to the original
+    if new.thumb_path is not null and new.thumb_path not like regexp_replace(new.path, '/[^/]*$', '') || '/%' then
+      raise exception 'That change is not allowed';
+    end if;
     -- the size comes from the stored file itself, not from the app
     select (o.metadata ->> 'size')::bigint into sz from storage.objects o where o.bucket_id = 'board-media' and o.name = new.path;
     if not found then raise exception 'Upload the file first'; end if;
@@ -353,7 +357,8 @@ begin
   else
     if new.family_id <> old.family_id or new.owner is distinct from old.owner or new.path <> old.path
        or new.thread_id is distinct from old.thread_id or new.message_id is distinct from old.message_id
-       or new.memory_id is distinct from old.memory_id or new.kind <> old.kind or new.bytes <> old.bytes then
+       or new.memory_id is distinct from old.memory_id or new.kind <> old.kind or new.bytes <> old.bytes
+       or new.thumb_path is distinct from old.thumb_path then
       raise exception 'That change is not allowed';
     end if;
     if new.album_id is distinct from old.album_id and (old.thread_id is not null

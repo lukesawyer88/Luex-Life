@@ -297,7 +297,7 @@ grant delete on public.board_poll_votes to authenticated;
 
 grant insert (family_id, title, kind) on public.board_albums to authenticated;
 grant update (title, archived_at) on public.board_albums to authenticated;
-grant insert (family_id, thread_id, message_id, album_id, memory_id, path, kind, mime, width, height, duration_s,
+grant insert (family_id, thread_id, message_id, album_id, memory_id, path, thumb_path, kind, mime, width, height, duration_s,
   caption, people, taken_at) on public.board_media to authenticated;
 grant update (caption, people, album_id, taken_at, deleted_at) on public.board_media to authenticated;
 grant update (revoked_at) on public.board_album_shares to authenticated;
