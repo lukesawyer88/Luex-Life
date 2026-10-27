@@ -3,6 +3,7 @@ import { Hammer } from "lucide-react";
 
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { useFamilyState } from "@/lib/family-context";
+import { CalendarPage } from "@/modules/calendar/calendar-page";
 import { MODULE_BY_KEY } from "@/modules/registry";
 
 /** Placeholder for a module that is planned but not built yet. Real modules replace this per key. */
@@ -20,6 +21,7 @@ export function ModulePage() {
       </Windows>
     );
   }
+  if (m.key === "calendar") return <CalendarPage />;
   const Icon = m.icon;
   return (
     <Windows>

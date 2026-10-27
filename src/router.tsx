@@ -1,4 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { Navigate, Outlet, RouterProvider, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/shell/app-shell";
@@ -15,12 +17,22 @@ import { HomePage } from "@/pages/home";
 import { JoinPage } from "@/pages/join";
 import { ModulePage } from "@/pages/module";
 import { SettingsPage } from "@/pages/settings";
+import { SharedCalendarPage } from "@/pages/shared";
 import { SetupPage } from "@/pages/setup";
 import { SignInPage } from "@/pages/sign-in";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: true } },
+  defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: true, gcTime: 24 * 60 * 60 * 1000 } },
 });
+
+/** Keeps the last-seen family data on this device so the calendar still opens without a signal. Cleared on sign-out. */
+export const CACHE_KEY = "luex.life.cache";
+const persister = createSyncStoragePersister({
+  storage: typeof window === "undefined" ? undefined : window.localStorage,
+  key: CACHE_KEY,
+  throttleTime: 2000,
+});
+const KEEP_OFFLINE = new Set(["me", "family", "members", "modules", "cal"]);
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });
 
@@ -82,6 +94,8 @@ const joinRoute = createRoute({
   validateSearch: (s: Record<string, unknown>): { t?: string } => ({ t: typeof s.t === "string" ? s.t : undefined }),
   component: JoinPage,
 });
+// a read-only calendar link for a babysitter or relative (no sign-in)
+const sharedRoute = createRoute({ getParentRoute: () => rootRoute, path: "/s/$token", component: SharedCalendarPage });
 const appRoute = createRoute({ getParentRoute: () => rootRoute, id: "app", component: AppLayout });
 const homeRoute = createRoute({ getParentRoute: () => appRoute, path: "/", component: HomePage });
 const moduleRoute = createRoute({ getParentRoute: () => appRoute, path: "/m/$key", component: ModulePage });
@@ -92,6 +106,7 @@ const routeTree = rootRoute.addChildren([
   signInRoute,
   setupRoute,
   joinRoute,
+  sharedRoute,
   appRoute.addChildren([homeRoute, moduleRoute, familyRoute, settingsRoute]),
 ]);
 
@@ -105,7 +120,15 @@ declare module "@tanstack/react-router" {
 
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        buster: "life-1",
+        dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === "success" && KEEP_OFFLINE.has(String(q.queryKey[0])) },
+      }}
+    >
       <ThemeProvider>
         <AuthProvider>
           <TooltipProvider>
@@ -114,6 +137,6 @@ export function App() {
           </TooltipProvider>
         </AuthProvider>
       </ThemeProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }

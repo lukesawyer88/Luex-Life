@@ -131,6 +131,21 @@
   --status-green-soft: rgba(29, 138, 78, 0.1);
   --status-amber-soft: rgba(214, 140, 20, 0.14);
   --status-red-soft: rgba(196, 50, 31, 0.1);
+
+  /* Calendar event types (each has an icon too, so colour is never the only clue) */
+  --ev-birthday: #2f6bd8;
+  --ev-school: #c27a0e;
+  --ev-activity: #1d8a4e;
+  --ev-appointment: #c4321f;
+  --ev-social: #c2367a;
+  --ev-trip: #0e8585;
+  --ev-work: #5b6472;
+  --ev-reminder: #7a4fd6;
+  --ev-other: #8a6d2f;
+  --ev-chore: #3b7f6b;
+  --ev-term: rgba(194, 122, 14, 0.16);
+  --ev-holiday: rgba(29, 138, 78, 0.16);
+  --ev-inset: rgba(122, 79, 214, 0.16);
 }
 
 .dark {
@@ -189,6 +204,20 @@
   --status-green-soft: rgba(111, 213, 154, 0.13);
   --status-amber-soft: rgba(243, 196, 107, 0.15);
   --status-red-soft: rgba(255, 143, 135, 0.14);
+
+  --ev-birthday: #8ab4ff;
+  --ev-school: #f3c46b;
+  --ev-activity: #6fd59a;
+  --ev-appointment: #ff8f87;
+  --ev-social: #ff8cc6;
+  --ev-trip: #5fd6d0;
+  --ev-work: #b6bcc7;
+  --ev-reminder: #b69cff;
+  --ev-other: #dcc58f;
+  --ev-chore: #7fd1b9;
+  --ev-term: rgba(243, 196, 107, 0.16);
+  --ev-holiday: rgba(111, 213, 154, 0.16);
+  --ev-inset: rgba(182, 156, 255, 0.16);
 }
 
 @layer base {
@@ -295,4 +324,11 @@ body,
 @media (max-height: 740px) {
   .lx-nav-item { min-height: 30px; }
   .lx-nav-item .lx-nav-ico { width: 26px; height: 26px; }
+}
+
+/* Calendar print: just the week, black on white */
+@media print {
+  .lx-sidebar, .lx-no-print, [data-sonner-toaster] { display: none !important; }
+  html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+  .lx-print-area { position: static !important; overflow: visible !important; height: auto !important; color: #000; }
 }

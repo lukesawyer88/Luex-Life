@@ -1,6 +1,7 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { turnPushOff } from "@/lib/push";
 import { supabase } from "@/lib/supabase";
 
 type AuthState = {
@@ -36,7 +37,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       loading,
       signOut: async () => {
+        // this device stops getting the family's notifications and forgets the family's data
+        try {
+          await turnPushOff();
+        } catch {
+          /* still sign out */
+        }
         await supabase.auth.signOut();
+        try {
+          window.localStorage.removeItem("luex.life.cache");
+        } catch {
+          /* private mode */
+        }
+        window.location.assign("/sign-in");
       },
     }),
     [session, loading],
