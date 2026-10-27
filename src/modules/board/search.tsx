@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BookHeart, ListChecks, Loader2, MessagesSquare, Search, StickyNote, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useExtra } from "@/lib/extras";
 import { Input } from "@/components/ui/input";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
@@ -32,6 +33,8 @@ function targetFor(h: Hit): BoardTarget {
 }
 
 export function BoardSearch({ open, onOpenChange, onGo }: { open: boolean; onOpenChange: (o: boolean) => void; onGo: (t: BoardTarget) => void }) {
+  const journalOn = useExtra("board.journal");
+  const goalsOn = useExtra("board.goals");
   const { family } = useFamilyState();
   const [q, setQ] = useState("");
   const [term, setTerm] = useState("");
@@ -46,7 +49,7 @@ export function BoardSearch({ open, onOpenChange, onGo }: { open: boolean; onOpe
     enabled: open && term.length >= 2,
     queryFn: () => rows<Hit>(supabase.rpc("board_search", { p_q: term })),
   });
-  const hits = res.data ?? [];
+  const hits = (res.data ?? []).filter((h) => (h.kind !== "memory" || journalOn) && (h.kind !== "goal" || goalsOn));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Search the Board">

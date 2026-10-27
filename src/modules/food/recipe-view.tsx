@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { friendlyError } from "@/lib/family";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,10 @@ export function RecipeView({
   const warn = useClashes(recipe);
   const canEdit = isParent || recipe.created_by === me.id;
   const mine = ratings.find((r) => r.member_id === me.id);
+  const showRatings = useExtra("food.ratings");
+  const showHistory = useExtra("food.collections");
+  const showTimeline = useExtra("food.seasonal");
+  const showNutrition = useExtra("food.nutrition");
   const scaled = (i: Ingredient) => ({ ...i, qty: scaleQty(i.qty, recipe.servings, servings) });
   const today = todayIn(family.timezone);
 
@@ -153,7 +158,7 @@ export function RecipeView({
         <Button className="h-12 rounded-full px-5 text-base font-semibold" onClick={() => onCook(servings)}><ChefHat className="size-5" /> Cook</Button>
         <Button variant="outline" className="h-12 rounded-full" onClick={() => setSheet("plan")}><CalendarPlus className="size-4" /> Plan it</Button>
         <Button variant="outline" className="h-12 rounded-full" onClick={() => setSheet("shop")}><ShoppingCart className="size-4" /> Shop for it</Button>
-        <Button variant="outline" className="h-12 rounded-full" onClick={() => void madeIt()}><Utensils className="size-4" /> I made this</Button>
+        {showHistory ? <Button variant="outline" className="h-12 rounded-full" onClick={() => void madeIt()}><Utensils className="size-4" /> I made this</Button> : null}
       </div>
 
       <section>
@@ -183,7 +188,7 @@ export function RecipeView({
         </section>
       ) : null}
 
-      {recipe.timeline?.length ? (
+      {showTimeline && recipe.timeline?.length ? (
         <section>
           <h3 className="mb-2 font-bold">Timeline</h3>
           <ul className="space-y-1 text-sm">
@@ -194,14 +199,14 @@ export function RecipeView({
         </section>
       ) : null}
 
-      {role !== "child" && recipe.nutrition && Object.values(recipe.nutrition).some((v) => v != null) ? (
+      {showNutrition && role !== "child" && recipe.nutrition && Object.values(recipe.nutrition).some((v) => v != null) ? (
         <section className="text-sm">
           <h3 className="mb-1 font-bold">Per serving <span className="font-normal text-muted-foreground">(estimate)</span></h3>
           <p>{[recipe.nutrition.kcal != null ? `${recipe.nutrition.kcal} kcal` : "", recipe.nutrition.protein != null ? `${recipe.nutrition.protein} g protein` : "", recipe.nutrition.carbs != null ? `${recipe.nutrition.carbs} g carbs` : "", recipe.nutrition.fat != null ? `${recipe.nutrition.fat} g fat` : ""].filter(Boolean).join(" · ")}</p>
         </section>
       ) : null}
 
-      <section>
+      {showRatings ? <section>
         <h3 className="mb-2 font-bold">What the family thinks</h3>
         <div className="mb-3 flex gap-2">
           <Button variant={mine?.value === 1 ? "default" : "outline"} className="h-11 rounded-full" onClick={() => void rate(1)} aria-pressed={mine?.value === 1}><ThumbsUp className="size-4" /> Love it</Button>
@@ -231,17 +236,17 @@ export function RecipeView({
             );
           })}
         </ul>
-      </section>
+      </section> : null}
 
-      {recipe.notes ? (
+      {showHistory && recipe.notes ? (
         <section>
           <h3 className="mb-1 font-bold">Notes</h3>
           <p className="whitespace-pre-wrap text-sm">{recipe.notes}</p>
         </section>
       ) : null}
       <p className="text-sm text-muted-foreground">
-        {recipe.times_made ? `Made ${recipe.times_made} time${recipe.times_made === 1 ? "" : "s"}${recipe.last_made ? `, last on ${DAY(recipe.last_made)}` : ""}` : "Not made yet"}
-        {recipe.source_url ? <> · <a className="underline" href={recipe.source_url} target="_blank" rel="noreferrer noopener">original recipe</a></> : null}
+        {showHistory ? (recipe.times_made ? `Made ${recipe.times_made} time${recipe.times_made === 1 ? "" : "s"}${recipe.last_made ? `, last on ${DAY(recipe.last_made)}` : ""}` : "Not made yet") : null}
+        {recipe.source_url ? <>{showHistory ? " · " : null}<a className="underline" href={recipe.source_url} target="_blank" rel="noreferrer noopener">original recipe</a></> : null}
       </p>
 
       <PlanSheet open={sheet === "plan"} onOpenChange={(o) => setSheet(o ? "plan" : null)} recipe={recipe} servings={servings} />

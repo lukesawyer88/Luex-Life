@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { friendlyError } from "@/lib/family";
 import { supabase } from "@/lib/supabase";
@@ -21,10 +22,13 @@ const PLACES: { key: Place; label: string }[] = [
 ];
 
 export function StockItemSheet({
-  open, onOpenChange, item, place: startPlace,
+  open, onOpenChange, item, place: startPlace, simple,
 }: {
   open: boolean; onOpenChange: (o: boolean) => void; item: StockItem | null; place?: Place;
+  /** just the freezer list: name and how many */
+  simple?: boolean;
 }) {
+  const showScan = useExtra("food.scan");
   const { family } = useFamilyState();
   const qc = useQueryClient();
   const [name, setName] = useState("");
@@ -83,36 +87,42 @@ export function StockItemSheet({
       <Sheet
         open={open}
         onOpenChange={onOpenChange}
-        title={item ? `Change ${item.name}` : "Add to the fridge, freezer or cupboard"}
+        title={item ? `Change ${item.name}` : simple ? "Add to the freezer" : "Add to the fridge, freezer or cupboard"}
         footer={<Button className="h-12 w-full rounded-full text-base font-semibold" disabled={busy || !name.trim()} onClick={() => void save()}>{busy ? <Loader2 className="size-4 animate-spin" /> : null} Save</Button>}
       >
         <div className="space-y-4">
           <div className="flex gap-2">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="What is it?" className="h-12 flex-1 text-base" aria-label="What is it" data-autofocus={!item ? true : undefined} />
-            {!item ? <Button variant="outline" size="icon" className="size-12 rounded-full" onClick={() => setScan(true)} aria-label="Scan a barcode"><ScanBarcode className="size-5" /></Button> : null}
+            {!item && showScan ? <Button variant="outline" size="icon" className="size-12 rounded-full" onClick={() => setScan(true)} aria-label="Scan a barcode"><ScanBarcode className="size-5" /></Button> : null}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {PLACES.map((p) => <Chip key={p.key} on={place === p.key} onClick={() => setPlace(p.key)}>{p.label}</Chip>)}
-          </div>
-          <label className="block text-sm font-semibold">Use by
-            <Input type="date" value={useBy} onChange={(e) => setUseBy(e.target.value)} className="mt-1 h-12" />
-          </label>
+          {!simple ? (
+            <div className="flex flex-wrap gap-2">
+              {PLACES.map((p) => <Chip key={p.key} on={place === p.key} onClick={() => setPlace(p.key)}>{p.label}</Chip>)}
+            </div>
+          ) : null}
+          {!simple ? (
+            <label className="block text-sm font-semibold">Use by
+              <Input type="date" value={useBy} onChange={(e) => setUseBy(e.target.value)} className="mt-1 h-12" />
+            </label>
+          ) : null}
           {place === "freezer" ? (
-            <label className="block text-sm font-semibold">Portions
+            <label className="block text-sm font-semibold">{simple ? "How many" : "Portions"}
               <Input value={portions} onChange={(e) => setPortions(e.target.value)} inputMode="numeric" placeholder="e.g. 3" className="mt-1 h-12" />
             </label>
           ) : null}
-          <div className="flex gap-2">
+          {!simple ? <div className="flex gap-2">
             <label className="block flex-1 text-sm font-semibold">How much
               <Input value={qty} onChange={(e) => setQty(e.target.value)} inputMode="decimal" placeholder="e.g. 2" className="mt-1 h-12" />
             </label>
             <label className="block flex-1 text-sm font-semibold">Unit
               <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="pints, g, packs" className="mt-1 h-12" />
             </label>
-          </div>
-          <label className="block text-sm font-semibold">Running low at (optional)
-            <Input value={lowAt} onChange={(e) => setLowAt(e.target.value)} inputMode="decimal" placeholder="e.g. 1 — we'll offer to add it to the list" className="mt-1 h-12" />
-          </label>
+          </div> : null}
+          {!simple ? (
+            <label className="block text-sm font-semibold">Running low at (optional)
+              <Input value={lowAt} onChange={(e) => setLowAt(e.target.value)} inputMode="decimal" placeholder="e.g. 1 — we'll offer to add it to the list" className="mt-1 h-12" />
+            </label>
+          ) : null}
           {nutrition ? (
             <p className="rounded-xl bg-[var(--surface)] p-3 text-xs text-muted-foreground">
               Per 100 g (estimate from Open Food Facts): {nutrition.kcal ?? "?"} kcal · protein {nutrition.protein ?? "?"} g · carbs {nutrition.carbs ?? "?"} g · fat {nutrition.fat ?? "?"} g

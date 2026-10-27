@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ export function BudgetTab({ onGo }: TabProps) {
   const prev = shiftPeriod(settings, per.start, -1);
   const isNow = today >= per.start && today <= per.end;
 
+  const carryOn = useExtra("money.carry");
   const cats = useCategories().data ?? [];
   const budgets = useBudgets(per.start).data ?? [];
   const prevBudgets = useBudgets(prev.start).data ?? [];
@@ -41,7 +43,7 @@ export function BudgetTab({ onGo }: TabProps) {
   const bills = useBills().data ?? [];
 
   // payments back far enough for carry-over (at most two years), last period and the year so far
-  const carryCats = new Set(cats.filter((c) => c.carry_over).map((c) => c.id));
+  const carryCats = new Set(carryOn ? cats.filter((c) => c.carry_over).map((c) => c.id) : []);
   const twoYears = addMonthsKey(per.start, -24);
   const carryFrom = history.filter((b) => carryCats.has(b.category_id) && b.period_start >= twoYears).reduce((m, b) => (b.period_start < m ? b.period_start : m), prev.start);
   const yearStart = `${per.start.slice(0, 4)}-01-01`;
@@ -66,7 +68,7 @@ export function BudgetTab({ onGo }: TabProps) {
       const spent = spentBy.get(c.id) ?? 0;
       if (c.archived_at && !b && !spent) continue;
       let carried = 0;
-      if (c.carry_over) {
+      if (c.carry_over && carryOn) {
         for (const h of history) {
           if (h.category_id !== c.id || h.period_start >= per.start || h.period_start < twoYears) continue;
           const p = periodFor(settings, h.period_start);
@@ -80,7 +82,7 @@ export function BudgetTab({ onGo }: TabProps) {
     const loose = [...spentBy.entries()].filter(([k]) => !shown.has(k)).reduce((n, [, v]) => n + v, 0);
     if (loose > 0) res.push({ cat: undefined, id: "", planned: 0, carried: 0, spent: loose, budget: undefined });
     return res;
-  }, [cats, budgets, history, spentBy, all, settings, per.start, twoYears]);
+  }, [cats, budgets, history, spentBy, all, settings, per.start, twoYears, carryOn]);
 
   const planned = lines.reduce((n, l) => n + l.planned + l.carried, 0);
   const hasPlan = lines.some((l) => l.planned > 0 || l.carried !== 0);
@@ -157,10 +159,10 @@ export function BudgetTab({ onGo }: TabProps) {
           {!hasPlan && lines.length ? <p className="mt-2 text-xs text-muted-foreground">Tap a category to plan how much to spend on it.</p> : null}
         </section>
 
-        <div className="lg:hidden"><Extras all={all} bills={bills} today={today} from={per.start} to={per.end} /></div>
+        <div className="lg:hidden"><Extras all={all} bills={bills} cats={cats} today={today} from={per.start} to={per.end} prevFrom={prev.start} prevTo={prev.end} /></div>
       </RecordsWindow>
       <DetailWindow>
-        <Extras all={all} bills={bills} today={today} from={per.start} to={per.end} />
+        <Extras all={all} bills={bills} cats={cats} today={today} from={per.start} to={per.end} prevFrom={prev.start} prevTo={prev.end} />
       </DetailWindow>
       <PaymentSheet open={adding} onOpenChange={setAdding} />
       <PlanSheet line={editing} periodStart={per.start} periodLabel={per.label} payments={out} settings={settings} onClose={() => setEditing(null)} onGo={onGo} />
@@ -206,9 +208,12 @@ function CategoryRow({ l, onClick }: { l: Line; onClick: () => void }) {
   );
 }
 
-/** yearly bills, child costs and pocket money (right-hand window on big screens, below on phones) */
-function Extras({ all, bills, today, from, to }: { all: Payment[]; bills: Bill[]; today: string; from: string; to: string }) {
+/** against last month, yearly bills, child costs (an extra) and pocket money (right-hand window on big screens, below on phones) */
+function Extras({ all, bills, cats, today, from, to, prevFrom, prevTo }: {
+  all: Payment[]; bills: Bill[]; cats: Category[]; today: string; from: string; to: string; prevFrom: string; prevTo: string;
+}) {
   const { members } = useFamilyState();
+  const childCosts = useExtra("money.childcosts");
   const yearly = bills.filter((b) => b.every === "year" || b.every === "quarter");
   const aside = yearly.reduce((n, b) => n + perMonth(b.amount, b.every as Every), 0);
   const yearStart = `${today.slice(0, 4)}-01-01`;
@@ -217,6 +222,8 @@ function Extras({ all, bills, today, from, to }: { all: Payment[]; bills: Bill[]
 
   return (
     <div className="space-y-4">
+      <LastMonth all={all} cats={cats} from={from} to={to} prevFrom={prevFrom} prevTo={prevTo} />
+
       <section data-testid="budget-yearly">
         <h3 className="mb-1 text-sm font-bold">Set aside for yearly bills</h3>
         {yearly.length ? (
@@ -234,7 +241,7 @@ function Extras({ all, bills, today, from, to }: { all: Payment[]; bills: Bill[]
         ) : <p className="text-sm text-muted-foreground">Add yearly or three-monthly bills under Bills to see what to put aside each month.</p>}
       </section>
 
-      <section data-testid="budget-children">
+      {childCosts ? <section data-testid="budget-children">
         <h3 className="mb-1 text-sm font-bold">Spent on each child this year</h3>
         {kids.size ? (
           <ul className="space-y-0.5 text-sm">
@@ -243,13 +250,53 @@ function Extras({ all, bills, today, from, to }: { all: Payment[]; bills: Bill[]
             ))}
           </ul>
         ) : <p className="text-sm text-muted-foreground">Pick a child when you add a payment to see what each child costs.</p>}
-      </section>
+      </section> : null}
 
       <section>
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold"><Coins className="size-4" /> Pocket money</h3>
         <PocketTotals from={from} to={to} />
       </section>
     </div>
+  );
+}
+
+/** this period against the last: money in, money out and the three biggest changes by category */
+function LastMonth({ all, cats, from, to, prevFrom, prevTo }: { all: Payment[]; cats: Category[]; from: string; to: string; prevFrom: string; prevTo: string }) {
+  const nowOut = counted(all, "out", from, to);
+  const prevOut = counted(all, "out", prevFrom, prevTo);
+  const inNow = sum(counted(all, "in", from, to));
+  const inPrev = sum(counted(all, "in", prevFrom, prevTo));
+  const outNow = sum(nowOut);
+  const outPrev = sum(prevOut);
+  const a = byCategory(nowOut);
+  const b = byCategory(prevOut);
+  const changes = [...new Set([...a.keys(), ...b.keys()])]
+    .map((id) => ({ id, d: (a.get(id) ?? 0) - (b.get(id) ?? 0) }))
+    .filter((x) => Math.abs(x.d) >= 1)
+    .sort((x, y) => Math.abs(y.d) - Math.abs(x.d))
+    .slice(0, 3);
+  const diff = (n: number) => (n === 0 ? "the same" : `${money(Math.abs(n))} ${n > 0 ? "more" : "less"}`);
+  return (
+    <section data-testid="budget-vs-last">
+      <h3 className="mb-1 text-sm font-bold">Against last time</h3>
+      <ul className="space-y-0.5 text-sm">
+        <li className="flex justify-between gap-2"><span>Money in</span><span className="tabular-nums text-muted-foreground">{diff(inNow - inPrev)}</span></li>
+        <li className="flex justify-between gap-2"><span>Money out</span><span className="tabular-nums text-muted-foreground">{diff(outNow - outPrev)}</span></li>
+      </ul>
+      {changes.length ? (
+        <>
+          <p className="mt-2 text-xs font-semibold text-muted-foreground">Biggest changes</p>
+          <ul className="space-y-0.5 text-sm">
+            {changes.map((c) => (
+              <li key={c.id || "none"} className="flex justify-between gap-2">
+                <span className="truncate">{catLabel(cats.find((x) => x.id === c.id))}</span>
+                <span className={cn("shrink-0 tabular-nums", c.d > 0 ? "text-[var(--status-red)]" : "text-[var(--status-green)]")}>{c.d > 0 ? "+" : "−"}{money(Math.abs(c.d))}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
   );
 }
 

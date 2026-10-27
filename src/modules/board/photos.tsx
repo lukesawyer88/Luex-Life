@@ -7,6 +7,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useExtra } from "@/lib/extras";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -54,6 +55,7 @@ export function useFamilyPhotos(albumId: string | null) {
 }
 
 export function PhotosTab(_: { target: BoardTarget; onGo: (t: BoardTarget) => void }) {
+  const drawingOn = useExtra("board.drawing");
   const { family, isParent, me, role } = useFamilyState();
   const desktop = useDesktop();
   const qc = useQueryClient();
@@ -121,7 +123,7 @@ export function PhotosTab(_: { target: BoardTarget; onGo: (t: BoardTarget) => vo
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button className="h-11 rounded-full px-4 font-semibold" onClick={() => fileInput.current?.click()}><Plus className="size-4" /> Add photos</Button>
-          <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => setSheet("drawing")}><Brush className="size-4" /> Scan a drawing</Button>
+          {drawingOn ? <Button variant="outline" className="h-11 rounded-full px-4" onClick={() => setSheet("drawing")}><Brush className="size-4" /> Scan a drawing</Button> : null}
           <div className="flex-1" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -9,6 +9,7 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { friendlyError } from "@/lib/family";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,9 @@ export function MealDetail({ item, recipe, recipes, takeaways, avoid, onClose, o
   const { family, members, role, isParent, me } = useFamilyState();
   const qc = useQueryClient();
   const adult = role !== "child";
+  const showIdeas = useExtra("food.ideas");
+  const showHistory = useExtra("food.collections");
+  const showTimeline = useExtra("food.seasonal");
   const canEdit = adult || (item.created_by === me.id && item.status === "requested");
   const name = mealName(item, recipes, takeaways);
   const photo = useFoodUrls([recipe?.photo_path]).data?.get(recipe?.photo_path ?? "");
@@ -207,10 +211,10 @@ export function MealDetail({ item, recipe, recipes, takeaways, avoid, onClose, o
         <div className="flex flex-wrap gap-2">
           <Chip on={panel === "move"} onClick={() => setPanel(panel === "move" ? null : "move")}><Move className="size-4" /> Move</Chip>
           <Chip on={panel === "copy"} onClick={() => setPanel(panel === "copy" ? null : "copy")}><Copy className="size-4" /> Copy</Chip>
-          <Chip on={panel === "leftovers"} onClick={() => setPanel(panel === "leftovers" ? null : "leftovers")}><Repeat className="size-4" /> Makes leftovers</Chip>
-          <Chip on={panel === "freeze"} onClick={() => setPanel(panel === "freeze" ? null : "freeze")}><Snowflake className="size-4" /> Freeze portions</Chip>
-          {recipe ? <Chip on={false} onClick={() => void madeIt()}><ChefHat className="size-4" /> We made it</Chip> : null}
-          {recipe?.timeline?.length ? <Chip on={panel === "timeline"} onClick={() => setPanel(panel === "timeline" ? null : "timeline")}><Clock className="size-4" /> Cooking timeline</Chip> : null}
+          {showIdeas ? <Chip on={panel === "leftovers"} onClick={() => setPanel(panel === "leftovers" ? null : "leftovers")}><Repeat className="size-4" /> Makes leftovers</Chip> : null}
+          {showIdeas ? <Chip on={panel === "freeze"} onClick={() => setPanel(panel === "freeze" ? null : "freeze")}><Snowflake className="size-4" /> Freeze portions</Chip> : null}
+          {recipe && showHistory ? <Chip on={false} onClick={() => void madeIt()}><ChefHat className="size-4" /> We made it</Chip> : null}
+          {showTimeline && recipe?.timeline?.length ? <Chip on={panel === "timeline"} onClick={() => setPanel(panel === "timeline" ? null : "timeline")}><Clock className="size-4" /> Cooking timeline</Chip> : null}
         </div>
       ) : null}
       {panel === "move" ? <DayPick label="Move to" initial={item.day} slot={item.slot as Slot} onPick={(d, s) => void moveTo(d, s)} /> : null}
@@ -218,7 +222,7 @@ export function MealDetail({ item, recipe, recipes, takeaways, avoid, onClose, o
       {panel === "leftovers" ? <DayPick label="Leftovers on" initial={nextDay(item.day)} slot={item.slot as Slot} onPick={(d, s) => void leftovers(d, s)} /> : null}
       {panel === "freeze" ? <Freeze onSave={(n) => void freeze(n)} /> : null}
       {panel === "timeline" && recipe?.timeline ? <Timeline steps={recipe.timeline} /> : null}
-      {recipe?.times_made ? <p className="text-xs text-muted-foreground">Made {recipe.times_made} {recipe.times_made === 1 ? "time" : "times"}{recipe.last_made ? `, last on ${dayLong(recipe.last_made)}` : ""}.</p> : null}
+      {showHistory && recipe?.times_made ? <p className="text-xs text-muted-foreground">Made {recipe.times_made} {recipe.times_made === 1 ? "time" : "times"}{recipe.last_made ? `, last on ${dayLong(recipe.last_made)}` : ""}.</p> : null}
 
       {canEdit ? (
         <Button variant="outline" className="h-11 w-full rounded-full text-[var(--status-red)]" onClick={() => void remove()}><Trash2 className="size-4" /> Remove from the plan</Button>

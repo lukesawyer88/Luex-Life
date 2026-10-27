@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { MemberAvatar } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useExtra } from "@/lib/extras";
 import { friendlyError } from "@/lib/family";
 import { useFamilyState } from "@/lib/family-context";
 import { fitJpeg } from "@/lib/image";
@@ -52,6 +53,10 @@ export function EventDetail({ occ, onEdit, onCopy, onWishList, onClosed }: Props
   const editable = !occ.virtual && canEditEvent(series, me.id, isParent) && canEditEvent(ev, me.id, isParent);
   const weather = useWeather(family.weather_lat, family.weather_lon, tz);
   const w = weather.data?.get(occ.startDay);
+  const showHistory = useExtra("cal.history");
+  const showComments = useExtra("cal.comments");
+  const showTickets = useExtra("cal.tickets");
+  const showCountdown = useExtra("cal.countdowns");
   const [askDelete, setAskDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const today = todayKey(tz);
@@ -138,7 +143,7 @@ export function EventDetail({ occ, onEdit, onCopy, onWishList, onClosed }: Props
         <p className="font-semibold">{occ.startDay === occ.endDay ? longDate(occ.startDay) : `${shortDate(occ.startDay)} to ${shortDate(occ.endDay)}`}</p>
         <p className="text-sm opacity-80">
           {occTime(occ, tz)} · {relativeDays(today, occ.startDay)}
-          {ev.countdown && occ.startDay > today ? ` · ${countdownText(today, occ.startDay)}` : ""}
+          {showCountdown && ev.countdown && occ.startDay > today ? ` · ${countdownText(today, occ.startDay)}` : ""}
         </p>
         {w ? (
           <p className="mt-1 flex items-center gap-1.5 text-sm opacity-80">
@@ -177,11 +182,11 @@ export function EventDetail({ occ, onEdit, onCopy, onWishList, onClosed }: Props
         </Section>
       ) : null}
 
-      {ev.notes || ev.booking_ref || ev.link ? (
+      {ev.notes || (showTickets && (ev.booking_ref || ev.link)) ? (
         <Section>
           {ev.notes ? <p className="whitespace-pre-wrap text-sm">{ev.notes}</p> : null}
-          {ev.booking_ref ? <p className="mt-1.5 flex items-center gap-2 text-sm"><Ticket className="size-4" /> Reference: <b className="select-all">{ev.booking_ref}</b></p> : null}
-          {ev.link ? <a className="mt-1.5 flex items-center gap-2 break-all text-sm underline" href={ev.link} target="_blank" rel="noreferrer noopener"><Link2 className="size-4 shrink-0" /> {ev.link.replace(/^https?:\/\//, "")}</a> : null}
+          {showTickets && ev.booking_ref ? <p className="mt-1.5 flex items-center gap-2 text-sm"><Ticket className="size-4" /> Reference: <b className="select-all">{ev.booking_ref}</b></p> : null}
+          {showTickets && ev.link ? <a className="mt-1.5 flex items-center gap-2 break-all text-sm underline" href={ev.link} target="_blank" rel="noreferrer noopener"><Link2 className="size-4 shrink-0" /> {ev.link.replace(/^https?:\/\//, "")}</a> : null}
         </Section>
       ) : null}
 
@@ -214,8 +219,10 @@ export function EventDetail({ occ, onEdit, onCopy, onWishList, onClosed }: Props
       {!occ.virtual ? (
         <>
           <Files eventId={ev.id} />
-          <Comments eventId={ev.id} />
-          <EventHistory eventId={ev.id} />
+          {showComments ? <Comments eventId={ev.id} /> : null}
+          {showHistory ? <EventHistory eventId={ev.id} /> : (
+            ev.created_by_member ? <p className="text-xs opacity-70">Added by {ev.created_by_member === me.id ? "you" : name(ev.created_by_member)}</p> : null
+          )}
         </>
       ) : null}
 

@@ -7,6 +7,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useExtra } from "@/lib/extras";
 import { MemberAvatar } from "@/components/member-avatar";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,7 @@ export function ListsTab({ target }: { target: BoardTarget; onGo: (t: BoardTarge
       <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShoppingBasket className="size-4" /> Shopping lists live in Food.</p>
       {data.isLoading ? <Loader2 className="size-5 animate-spin" /> : null}
       {!data.isLoading && real.length === 0 ? (
-        <Empty icon={ListChecks} title="No lists yet">Make a list for jobs, plans or a family bucket list. Everyone can see and tick every list.</Empty>
+        <Empty icon={ListChecks} title="No lists yet">Make a list for jobs, plans or anything else. Everyone can see and tick every list.</Empty>
       ) : null}
       <ul className="space-y-1.5">
         {real.map((l) => {
@@ -432,6 +433,7 @@ function EmojiPick({ value, onChange }: { value: string; onChange: (e: string) =
 function NewListSheet({ open, template, templateItems, onClose, onMade }: {
   open: boolean; template?: ListTemplate | BoardList; templateItems?: string[]; onClose: () => void; onMade: (id: string) => void;
 }) {
+  const bucketOn = useExtra("board.bucket");
   const { family } = useFamilyState();
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("📝");
@@ -469,12 +471,14 @@ function NewListSheet({ open, template, templateItems, onClose, onMade }: {
       footer={<><span className="flex-1" /><Button className="h-11 rounded-full px-6 font-semibold" onClick={make} disabled={busy || !title.trim()}>{busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Make list</Button></>}>
       <div className="space-y-4">
         <Field label="Name"><Input data-autofocus autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Jobs this weekend" className="h-12 text-base" /></Field>
-        <Field label="Kind of list">
-          <div className="flex flex-wrap gap-1.5">
-            <Chip on={kind === "list"} onClick={() => setKind("list")}>Ordinary list</Chip>
-            <Chip on={kind === "bucket"} onClick={() => { setKind("bucket"); if (emoji === "📝") setEmoji("🌍"); if (!title) setTitle("Family bucket list"); }}>🌍 Family bucket list</Chip>
-          </div>
-        </Field>
+        {bucketOn || kind === "bucket" ? (
+          <Field label="Kind of list">
+            <div className="flex flex-wrap gap-1.5">
+              <Chip on={kind === "list"} onClick={() => setKind("list")}>Ordinary list</Chip>
+              <Chip on={kind === "bucket"} onClick={() => { setKind("bucket"); if (emoji === "📝") setEmoji("🌍"); if (!title) setTitle("Family bucket list"); }}>🌍 Family bucket list</Chip>
+            </div>
+          </Field>
+        ) : null}
         <Field label="Picture"><EmojiPick value={emoji} onChange={setEmoji} /></Field>
         {startItems.length ? (
           <Field label={`Starts with ${startItems.length} items`}>

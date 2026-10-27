@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useExtra } from "@/lib/extras";
 import { friendlyError } from "@/lib/family";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
@@ -113,6 +114,8 @@ export function EventEditor({ open, onOpenChange, mode, onSaved }: { open: boole
   const [f, setF] = useState(init);
   const [typeTouched, setTypeTouched] = useState(false);
   const [more, setMore] = useState(false);
+  const showTickets = useExtra("cal.tickets");
+  const showCountdown = useExtra("cal.countdowns");
   const [multiDay, setMultiDay] = useState(false);
   const [savePlace, setSavePlace] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -380,7 +383,7 @@ export function EventEditor({ open, onOpenChange, mode, onSaved }: { open: boole
         ) : null}
 
         <button type="button" onClick={() => setMore((x) => !x)} className="flex min-h-10 w-full items-center justify-between rounded-xl text-sm font-semibold">
-          More: place, lift, notes, tickets{canChooseViewers ? ", who sees it" : ""}
+          More: place, lift, notes{showTickets ? ", tickets" : ""}{canChooseViewers ? ", who sees it" : ""}
           <ChevronDown className={cn("size-4 transition", more && "rotate-180")} />
         </button>
 
@@ -417,6 +420,7 @@ export function EventEditor({ open, onOpenChange, mode, onSaved }: { open: boole
               <Textarea value={f.notes} maxLength={4000} rows={3} placeholder="Anything to remember: what to bring, who's going" onChange={(e) => set("notes", e.target.value)} />
             </Field>
 
+            {showTickets ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Booking or ticket reference">
                 <Input value={f.bookingRef} maxLength={200} onChange={(e) => set("bookingRef", e.target.value)} className="h-11" />
@@ -425,12 +429,15 @@ export function EventEditor({ open, onOpenChange, mode, onSaved }: { open: boole
                 <Input value={f.link} maxLength={500} inputMode="url" placeholder="https://" onChange={(e) => set("link", e.target.value)} className="h-11" />
               </Field>
             </div>
-            <p className="-mt-3 text-xs text-muted-foreground">You can add photos of letters and tickets once it's saved.</p>
+            ) : null}
+            <p className={showTickets ? "-mt-3 text-xs text-muted-foreground" : "text-xs text-muted-foreground"}>You can add photos of letters{showTickets ? " and tickets" : ""} once it's saved.</p>
 
+            {showCountdown ? (
             <label className="flex min-h-10 items-center justify-between gap-3 text-sm font-semibold">
               Show a countdown ("5 sleeps to go")
               <Switch checked={f.countdown} onCheckedChange={(v) => set("countdown", v)} />
             </label>
+            ) : null}
 
             {canChooseViewers ? (
               <Field label={<span className="inline-flex items-center gap-1.5"><Lock className="size-4" /> Who can see it?</span>} hint="Pick people to keep it a surprise. Only you and the people you pick will see it, even if it's about someone else.">

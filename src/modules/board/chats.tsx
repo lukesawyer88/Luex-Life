@@ -5,6 +5,7 @@ import { ArrowLeft, BellOff, Eye, MessageSquarePlus, Pin, Settings2, Users } fro
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useExtra } from "@/lib/extras";
 import { MemberAvatar } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -177,9 +178,11 @@ function ThreadView({
     if (pages === 1) scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
   }, [lastId, pending.length, data, highlight, pages]);
 
-  const pinned = (data?.messages ?? []).filter((m) => m.pinned_at && !m.deleted_at).sort((a, b) => (b.pinned_at ?? "").localeCompare(a.pinned_at ?? ""));
+  const pinOn = useExtra("board.pin");
+  const seenOn = useExtra("board.seen");
+  const pinned = (pinOn ? data?.messages ?? [] : []).filter((m) => m.pinned_at && !m.deleted_at).sort((a, b) => (b.pinned_at ?? "").localeCompare(a.pinned_at ?? ""));
   const lastMine = [...(data?.messages ?? [])].reverse().find((m) => m.author === me.id && !m.deleted_at);
-  const seenBy = lastMine && data
+  const seenBy = seenOn && lastMine && data
     ? data.state.filter((s) => s.member_id !== me.id && s.last_read_at >= lastMine.created_at).map((s) => members.find((m) => m.id === s.member_id)?.display_name).filter(Boolean)
     : [];
 

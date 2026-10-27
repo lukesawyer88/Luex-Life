@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { Chip, Field, Sheet } from "@/modules/calendar/ui";
@@ -44,6 +45,10 @@ export function PocketSettingsSheet({ open, onClose, childId, name, person }: {
   const [interest, setInterest] = useState("0");
   const [match, setMatch] = useState("0");
   const [busy, setBusy] = useState(false);
+  // extras (More features); hidden fields keep whatever was saved before
+  const giveOn = useExtra("rewards.give");
+  const interestOn = useExtra("rewards.interest");
+  const teenOn = useExtra("rewards.teen");
 
   useEffect(() => {
     if (!open) return;
@@ -96,22 +101,23 @@ export function PocketSettingsSheet({ open, onClose, childId, name, person }: {
           </div>
         </Field>
         <Field label="Next pay day"><Input type="date" min={today} value={nextPay} onChange={(e) => setNextPay(e.target.value)} className="h-11" /></Field>
-        <div className="grid grid-cols-2 gap-2">
+        <div className={giveOn ? "grid grid-cols-2 gap-2" : ""}>
           <Field label="% into save"><Input inputMode="numeric" value={save} onChange={(e) => setSave(e.target.value)} className="h-11" /></Field>
-          <Field label="% into give"><Input inputMode="numeric" value={give} onChange={(e) => setGive(e.target.value)} className="h-11" /></Field>
+          {giveOn ? <Field label="% into give"><Input inputMode="numeric" value={give} onChange={(e) => setGive(e.target.value)} className="h-11" /></Field> : null}
         </div>
         {each > 0 && sp + gp <= 100 ? (
           <p className="rounded-2xl bg-[var(--surface)] p-3 text-sm">
-            Each pay day: {money(each - Math.round(each * sp) / 100 - Math.round(each * gp) / 100)} to spend, {money(Math.round(each * sp) / 100)} to save, {money(Math.round(each * gp) / 100)} to give.
+            Each pay day: {money(each - Math.round(each * sp) / 100 - Math.round(each * gp) / 100)} to spend, {money(Math.round(each * sp) / 100)} to save
+            {giveOn || gp > 0 ? `, ${money(Math.round(each * gp) / 100)} to give` : ""}.
           </p>
         ) : null}
-        {sp + gp > 100 ? <p className="text-sm text-[var(--status-red)]">Save and give can't add up to more than 100%.</p> : null}
+        {sp + gp > 100 ? <p className="text-sm text-[var(--status-red)]">{giveOn ? "Save and give can't add up to more than 100%." : "Save can't be more than 100%."}</p> : null}
         <Field label="Pause until (holidays)" hint="No pocket money until after this day."><Input type="date" value={pause} onChange={(e) => setPause(e.target.value)} className="h-11" /></Field>
-        <div className="grid grid-cols-2 gap-2">
+        {interestOn ? <div className="grid grid-cols-2 gap-2">
           <Field label="Interest on savings" hint="% a month, paid by you on the 1st"><Input inputMode="decimal" value={interest} onChange={(e) => setInterest(e.target.value)} className="h-11" /></Field>
           <Field label="Match savings" hint="% you add to what they save each month"><Input inputMode="numeric" value={match} onChange={(e) => setMatch(e.target.value)} className="h-11" /></Field>
-        </div>
-        <SwitchRow label="Teen mode" hint="Their own spending and rewards don't wait for an OK, and they can move money out of savings." on={teen} onChange={setTeen} />
+        </div> : null}
+        {teenOn ? <SwitchRow label="Teen mode" hint="Their own spending and rewards don't wait for an OK, and they can move money out of savings." on={teen} onChange={setTeen} /> : null}
       </div>
     </Sheet>
   );

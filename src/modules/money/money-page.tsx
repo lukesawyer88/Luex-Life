@@ -2,6 +2,7 @@ import { BarChart3, CalendarClock, Landmark, Loader2, PiggyBank, ReceiptText, Se
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useExtra } from "@/lib/extras";
 import { Tabs } from "@/modules/calendar/ui";
 
 import { BillsTab } from "./bills";
@@ -44,15 +45,18 @@ export function MoneyPage() {
     return () => window.removeEventListener("online", on);
   }, []);
 
+  // extras (Settings, More features) add the investments and reports tabs
+  const invest = useExtra("money.invest");
+  const reports = useExtra("money.reports");
   const items: { key: MoneyTab; label: string; icon: typeof Wallet }[] = [
     { key: "budget", label: "This month", icon: Wallet },
     { key: "payments", label: "Payments", icon: ReceiptText },
     { key: "bills", label: "Bills", icon: CalendarClock },
-    { key: "savings", label: "Savings and gifts", icon: PiggyBank },
-    { key: "debts", label: "Loans and investments", icon: Landmark },
-    { key: "reports", label: "Reports", icon: BarChart3 },
+    { key: "savings", label: "Savings", icon: PiggyBank },
   ];
-  const tab = target.tab;
+  if (invest) items.push({ key: "debts", label: "Investments and credit", icon: Landmark });
+  if (reports) items.push({ key: "reports", label: "Reports", icon: BarChart3 });
+  const tab: MoneyTab = items.some((i) => i.key === target.tab) ? target.tab : "budget";
 
   if (settings.isLoading) return <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
   if (settings.isError) return <div className="grid flex-1 place-items-center p-6 text-center text-sm">Money couldn't open. Check your signal and try again.</div>;

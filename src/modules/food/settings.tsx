@@ -8,6 +8,7 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { friendlyError, type Member } from "@/lib/family";
 import { supabase } from "@/lib/supabase";
@@ -26,11 +27,12 @@ const DIETS = ["Vegetarian", "Vegan", "Pescatarian", "Halal", "Kosher", "Gluten-
 export function FoodSettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { role } = useFamilyState();
   const adult = role !== "child";
+  const showCalories = useExtra("food.nutrition");
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Food settings" wide>
       <div className="space-y-6">
         <AvoidSection />
-        {adult ? <CaloriesSection /> : null}
+        {adult && showCalories ? <CaloriesSection /> : null}
         {adult ? <AislesSection /> : null}
       </div>
     </Sheet>

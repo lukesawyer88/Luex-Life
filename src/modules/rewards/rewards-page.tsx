@@ -2,6 +2,7 @@ import { Clock3, HandHeart, History, Loader2, Settings2, Sparkles, Star, Users }
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { Tabs } from "@/modules/calendar/ui";
 
@@ -39,6 +40,9 @@ export function RewardsPage() {
   const first = useMemo(fromUrl, []);
   const [target, setTarget] = useState<RewardTarget | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const habitsOn = useExtra("rewards.habits");
+  const treatJarOn = useExtra("rewards.treatjar");
+  const meOn = habitsOn || treatJarOn;
 
   // ticks and records made without a signal go as soon as it's back
   useEffect(() => {
@@ -50,19 +54,20 @@ export function RewardsPage() {
 
   if (settings.isLoading) return <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
   if (settings.isError || !settings.data) return <div className="grid flex-1 place-items-center p-6 text-center text-sm">Rewards couldn't open. Check your signal and try again.</div>;
-  const s = settings.data;
   const hasChildren = members.some((m) => m.role === "child" && !m.archived_at);
   const waitingN = (waiting.data?.money.length ?? 0) + (waiting.data?.claims.length ?? 0);
 
+  // kept simple: parents see Children, Waiting, Jobs and History; a child sees their own screen and Jobs;
+  // other grown-ups see Jobs and History. "Me" only appears when habits or the treat jar is switched on.
   const items: { key: RewardTab; label: string; icon: typeof Star }[] = [];
   if (role === "child") items.push({ key: "mine", label: "My stars and money", icon: Star });
-  else if (s.for_me) items.push({ key: "me", label: "Me", icon: Sparkles });
-  if (s.for_us) items.push({ key: "us", label: "Together", icon: Users });
-  if (isParent && s.children && hasChildren) {
+  if (isParent && hasChildren) {
     items.push({ key: "kids", label: "Children", icon: HandHeart });
     items.push({ key: "approvals", label: waitingN ? `Waiting (${waitingN})` : "Waiting", icon: Clock3 });
   }
-  items.push({ key: "history", label: "History", icon: History });
+  items.push({ key: "us", label: "Jobs", icon: Users });
+  if (role !== "child") items.push({ key: "history", label: "History", icon: History });
+  if (role !== "child" && meOn) items.push({ key: "me", label: "Me", icon: Sparkles });
 
   const wanted = target?.tab ?? first.tab ?? items[0].key;
   const tab = items.some((i) => i.key === wanted) ? wanted : items[0].key;

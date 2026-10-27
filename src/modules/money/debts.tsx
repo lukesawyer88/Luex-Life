@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { useDesktop } from "@/lib/use-desktop";
@@ -28,12 +29,13 @@ function monthYear(k: string) {
   return new Date(k + "T12:00:00Z").toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
+/** Investments and credit (an extra): the mortgage calculator, investments and pensions, and credit scores.
+ *  Loans and cards live under Savings. */
 export function DebtsTab(_props: TabProps) {
-  const [view, setView] = useState<View>("loans");
+  const [view, setView] = useState<View>("investments");
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1">
-        <Chip on={view === "loans"} onClick={() => setView("loans")} className="shrink-0"><Landmark className="size-4" /> Loans and cards</Chip>
         <Chip on={view === "mortgage"} onClick={() => setView("mortgage")} className="shrink-0"><Calculator className="size-4" /> Mortgage calculator</Chip>
         <Chip on={view === "investments"} onClick={() => setView("investments")} className="shrink-0"><LineChart className="size-4" /> Investments and pensions</Chip>
         <Chip on={view === "credit"} onClick={() => setView("credit")} className="shrink-0"><Gauge className="size-4" /> Credit score</Chip>
@@ -45,7 +47,7 @@ export function DebtsTab(_props: TabProps) {
 
 // ---------------------------------------------------------------- loans
 
-function Loans() {
+export function Loans() {
   const { family } = useFamilyState();
   const desktop = useDesktop();
   return <LoansInner today={todayIn(family.timezone)} desktop={desktop} />;
@@ -112,6 +114,7 @@ function LoansInner({ today, desktop }: { today: string; desktop: boolean }) {
 function DebtDetail({ d, today, onEdit, onClosed, hideTitle }: { d: Debt; today: string; onEdit: () => void; onClosed: () => void; hideTitle?: boolean }) {
   const { family } = useFamilyState();
   const qc = useQueryClient();
+  const whatIf = useExtra("money.whatif");
   const [extra, setExtra] = useState(0);
   useEffect(() => setExtra(0), [d.id]);
   const bal = Number(d.balance);
@@ -145,7 +148,7 @@ function DebtDetail({ d, today, onEdit, onClosed, hideTitle }: { d: Debt; today:
         </p>
       ) : pay ? <p className="rounded-2xl bg-[var(--status-red-soft)] p-3 text-sm text-[var(--status-red)]">At {money(pay)} a month this never gets paid off: the payment doesn't cover the interest.</p> : null}
 
-      <section className="space-y-2" data-testid="debt-whatif">
+      {whatIf ? <section className="space-y-2" data-testid="debt-whatif">
         <h3 className="text-sm font-bold">What if I paid more each month?</h3>
         <input type="range" min={0} max={maxExtra} step={5} value={extra} onChange={(e) => setExtra(Number(e.target.value))} className="w-full accent-[var(--status-blue)]" aria-label="Extra each month" />
         <p className="text-sm">An extra <b className="tabular-nums">{money(extra, true)}</b> a month:</p>
@@ -156,7 +159,7 @@ function DebtDetail({ d, today, onEdit, onClosed, hideTitle }: { d: Debt; today:
           </p>
         ) : extra > 0 ? <p className="text-sm text-muted-foreground">Still not enough to cover the interest.</p> : null}
         <p className="text-xs text-muted-foreground">An estimate, not advice. Some lenders charge for paying early: check your agreement.</p>
-      </section>
+      </section> : null}
 
       <div className="flex gap-2">
         <Button variant="ghost" className="h-10 flex-1 rounded-full" onClick={onEdit}><Pencil className="size-4" /> Update</Button>

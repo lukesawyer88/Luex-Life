@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { MemberAvatar } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { friendlyError } from "@/lib/family";
 import { fitJpeg } from "@/lib/image";
@@ -33,6 +34,7 @@ export function ItemDetail({
   onClose?: () => void;
 }) {
   const { family, me, members, role } = useFamilyState();
+  const showAssign = useExtra("food.assign");
   const qc = useQueryClient();
   const adult = role !== "child";
   const editable = canEditItem(item, me.id, adult);
@@ -124,7 +126,7 @@ export function ItemDetail({
         <p className="mt-1 text-xs text-muted-foreground">The list remembers where you put it for next time.</p>
       </div>
 
-      {editable ? (
+      {editable && showAssign ? (
         <div>
           <p className="mb-1.5 text-sm font-semibold">Who's getting it?</p>
           <PeoplePicker members={members} value={item.assignee ? [item.assignee] : []} onChange={(ids) => void save({ assignee: ids[0] ?? null })} single />

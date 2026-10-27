@@ -97,7 +97,7 @@ export function ImportLinkSheet({ open, onOpenChange, onDraft }: { open: boolean
       {err ? (
         <div className="mt-4 rounded-2xl bg-[var(--status-amber-soft)] p-3 text-sm text-[var(--status-amber)]">
           <p className="font-semibold">{err}</p>
-          <p className="mt-1">You can scan it from a photo or type it in instead.</p>
+          <p className="mt-1">You can type it in instead.</p>
         </div>
       ) : null}
     </Sheet>

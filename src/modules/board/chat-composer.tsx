@@ -7,6 +7,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useExtra } from "@/lib/extras";
 import { MemberAvatar } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -38,6 +39,8 @@ export function Composer({
   const canPhotos = useAllowed("photos");
   const canVoice = useAllowed("voice");
   const canLocation = useAllowed("location");
+  const stickersOn = useExtra("board.stickers");
+  const kudosOn = useExtra("board.kudos");
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
   const [sheet, setSheet] = useState<null | "mention" | "sticker" | "poll" | "ask" | "kudos" | "announce">(null);
@@ -173,11 +176,11 @@ export function Composer({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="top" className="w-60">
               {canPhotos ? <DropdownMenuItem onSelect={() => fileRef.current?.click()}><Camera className="mr-2 size-4" /> Photo or video</DropdownMenuItem> : null}
-              <DropdownMenuItem onSelect={() => setSheet("sticker")}><Smile className="mr-2 size-4" /> Sticker</DropdownMenuItem>
+              {stickersOn ? <DropdownMenuItem onSelect={() => setSheet("sticker")}><Smile className="mr-2 size-4" /> Sticker</DropdownMenuItem> : null}
               <DropdownMenuItem onSelect={() => setSheet("poll")}><BarChart3 className="mr-2 size-4" /> Poll</DropdownMenuItem>
               {others.length ? <DropdownMenuItem onSelect={() => setSheet("mention")}><AtSign className="mr-2 size-4" /> Mention someone</DropdownMenuItem> : null}
               {canLocation && others.length ? <DropdownMenuItem onSelect={() => setSheet("ask")}><MapPin className="mr-2 size-4" /> Where are you?</DropdownMenuItem> : null}
-              {family_chat ? <DropdownMenuItem onSelect={() => setSheet("kudos")}><Star className="mr-2 size-4" /> Shout-out</DropdownMenuItem> : null}
+              {family_chat && kudosOn ? <DropdownMenuItem onSelect={() => setSheet("kudos")}><Star className="mr-2 size-4" /> Shout-out</DropdownMenuItem> : null}
               {family_chat && isParent ? <DropdownMenuItem onSelect={() => setSheet("announce")}><Megaphone className="mr-2 size-4" /> Announcement</DropdownMenuItem> : null}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -318,6 +321,7 @@ function VoiceRecorder({ onCancel, onDone }: { onCancel: () => void; onDone: (f:
 function PollSheet({ open, onClose, threadId, onDone }: { open: boolean; onClose: () => void; threadId: string; onDone: () => void }) {
   const [question, setQuestion] = useState("");
   const [kind, setKind] = useState<"choice" | "date">("choice");
+  const dateOn = useExtra("board.datepoll");
   const [multi, setMulti] = useState(false);
   const [answers, setAnswers] = useState<string[]>(["", ""]);
   const [busy, setBusy] = useState(false);
@@ -341,10 +345,12 @@ function PollSheet({ open, onClose, threadId, onDone }: { open: boolean; onClose
     <Sheet open={open} onOpenChange={(o) => !o && onClose()} title="New poll"
       footer={<Button className="h-11 flex-1 rounded-full" disabled={busy || !question.trim() || filled.length < 2} onClick={() => void create()}>Send poll</Button>}>
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <Chip on={kind === "choice"} onClick={() => { setKind("choice"); setAnswers(["", ""]); }}>Choices</Chip>
-          <Chip on={kind === "date"} onClick={() => { setKind("date"); setAnswers(["", ""]); }}>Pick a date</Chip>
-        </div>
+        {dateOn ? (
+          <div className="flex flex-wrap gap-2">
+            <Chip on={kind === "choice"} onClick={() => { setKind("choice"); setAnswers(["", ""]); }}>Choices</Chip>
+            <Chip on={kind === "date"} onClick={() => { setKind("date"); setAnswers(["", ""]); }}>Pick a date</Chip>
+          </div>
+        ) : null}
         <label className="block space-y-1">
           <span className="text-sm font-semibold">Question</span>
           <Input value={question} maxLength={200} onChange={(e) => setQuestion(e.target.value)} placeholder={kind === "date" ? "Which Saturday for Gran's visit?" : "Pizza or curry tonight?"} className="h-11" data-autofocus />

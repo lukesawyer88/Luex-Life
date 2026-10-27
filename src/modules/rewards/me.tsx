@@ -1,12 +1,14 @@
 // "Me": a grown-up's own stars, habits, rewards and treat jar, plus habits they're cheering someone on with.
+// Habits and the treat jar are extras (More features); this tab only shows when one of them is switched on.
 import { Star } from "lucide-react";
 import { useMemo } from "react";
 
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { useDesktop } from "@/lib/use-desktop";
 
-import { addDaysKey, todayIn, useBalances, useHabits, useRewards, useRewardSettings } from "./data";
+import { addDaysKey, todayIn, useBalances, useHabits, useRewards } from "./data";
 import { CheeringOn, MyHabits } from "./habit-list";
 import { MyRewards, StarHistory, TreatJar } from "./me-side";
 import type { TabProps } from "./rewards-page";
@@ -20,7 +22,8 @@ export function MeTab(_props: TabProps) {
   const balances = useBalances();
   const habitsQ = useHabits(since);
   const rewardsQ = useRewards();
-  const settings = useRewardSettings();
+  const habitsOn = useExtra("rewards.habits");
+  const treatJar = useExtra("rewards.treatjar");
 
   const mine = balances.data?.get(me.id);
   const stars = mine?.stars ?? 0;
@@ -28,11 +31,10 @@ export function MeTab(_props: TabProps) {
   const buddyOf = (habitsQ.data?.habits ?? []).filter((h) => h.buddy === me.id && h.member_id !== me.id);
   const logs = habitsQ.data?.logs ?? [];
   const myRewards = (rewardsQ.data?.rewards ?? []).filter((r) => r.kind === "me" && r.owner === me.id);
-  const treatJar = settings.data?.for_me !== false;
 
   const side = (
     <div className="space-y-5">
-      <MyRewards rewards={myRewards} stars={stars} />
+      {habitsOn ? <MyRewards rewards={myRewards} stars={stars} /> : null}
       {treatJar ? <TreatJar balance={mine?.spend ?? 0} /> : null}
       <StarHistory />
     </div>
@@ -48,8 +50,8 @@ export function MeTab(_props: TabProps) {
             <span data-testid="me-stars" className="block text-4xl font-bold tabular-nums">{stars}</span>
           </span>
         </div>
-        <MyHabits habits={habits} logs={logs} today={today} since={since} />
-        <CheeringOn habits={buddyOf} logs={logs} today={today} />
+        {habitsOn ? <MyHabits habits={habits} logs={logs} today={today} since={since} /> : null}
+        {habitsOn ? <CheeringOn habits={buddyOf} logs={logs} today={today} /> : null}
         {!desktop ? side : null}
       </RecordsWindow>
       {desktop ? <DetailWindow>{side}</DetailWindow> : null}

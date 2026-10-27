@@ -1,4 +1,5 @@
-// A child's own screen: big stars and pots, goals, habits to tick, the reward shop, and a money tip.
+// A child's own screen: big stars and pots, goals and the reward shop. Habits, the give pot, swapping stars and
+// money tips are extras (More features).
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftRight, Lightbulb, ShoppingBag, Star } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -6,6 +7,7 @@ import { toast } from "sonner";
 
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { Sheet } from "@/modules/calendar/ui";
@@ -42,6 +44,11 @@ export function MineTab(_props: TabProps) {
   const [ask, setAsk] = useState<Reward | null>(null);
   const [busy, setBusy] = useState(false);
   const tip = tipFor(ageFrom(me.birthday, today), today);
+  const giveOn = useExtra("rewards.give");
+  const swapOn = useExtra("rewards.swap");
+  const habitsOn = useExtra("rewards.habits");
+  const tipsOn = useExtra("rewards.tips");
+  const showGive = giveOn || b.give !== 0;
 
   async function askFor(r: Reward) {
     setBusy(true);
@@ -54,7 +61,7 @@ export function MineTab(_props: TabProps) {
   }
 
   const lastClaim = (rid: string) => myClaims.find((c) => c.reward_id === rid && c.created_at.slice(0, 10) >= addDaysKey(today, -7));
-  const tipBox = (
+  const tipBox = !tipsOn ? null : (
     <div className="flex gap-3 rounded-2xl bg-[var(--status-blue-soft)] p-3" data-testid="mine-tip">
       <Lightbulb className="mt-0.5 size-5 shrink-0 text-[var(--status-blue)]" />
       <p className="text-sm">{tip}</p>
@@ -70,10 +77,9 @@ export function MineTab(_props: TabProps) {
           <span className="text-lg font-semibold text-muted-foreground">stars</span>
         </div>
 
-        {settings?.children !== false ? (
-          <>
-            <div className="grid grid-cols-3 gap-2">
-              {([["spend", b.spend, "Spend"], ["save", b.save, "Save"], ["give", b.give, "Give"]] as const).map(([p, v, label]) => (
+        <>
+            <div className={showGive ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>
+              {([["spend", b.spend, "Spend"], ["save", b.save, "Save"], ["give", b.give, "Give"]] as const).filter(([p]) => p !== "give" || showGive).map(([p, v, label]) => (
                 <div key={p} className="glass-tile p-3 text-center" data-testid={`mine-${p}`}>
                   <div className="text-4xl" aria-hidden>{POT_EMOJI[p]}</div>
                   <div className="text-xl font-extrabold tabular-nums">{money(v)}</div>
@@ -83,13 +89,13 @@ export function MineTab(_props: TabProps) {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Button data-testid="mine-move" variant="outline" className="h-14 rounded-2xl text-base font-semibold" onClick={() => setMove(true)} disabled={b.spend <= 0 && !person?.teen_mode}>
-                <ArrowLeftRight className="size-5" /> Save or give
+                <ArrowLeftRight className="size-5" /> {showGive ? "Save or give" : "Save some"}
               </Button>
               <Button data-testid="mine-spent" variant="outline" className="h-14 rounded-2xl text-base font-semibold" onClick={() => setSpent(true)}>
                 <ShoppingBag className="size-5" /> I spent some
               </Button>
             </div>
-            {settings?.stars_per_pound && b.stars > 0 ? (
+            {swapOn && settings?.stars_per_pound && b.stars > 0 ? (
               <Button variant="outline" className="h-12 rounded-2xl" onClick={() => setSwap(true)}>⭐ Swap stars for money ({settings.stars_per_pound} stars = £1)</Button>
             ) : null}
             {goals.length ? (
@@ -98,12 +104,11 @@ export function MineTab(_props: TabProps) {
                 {goals.map((g) => <GoalBar key={g.id} goal={g} saved={b.save} />)}
               </section>
             ) : null}
-          </>
-        ) : null}
+        </>
 
-        <div className="lg:hidden">{tipBox}</div>
+        {tipBox ? <div className="lg:hidden">{tipBox}</div> : null}
 
-        {myHabits.length ? (
+        {habitsOn && myHabits.length ? (
           <section className="space-y-2">
             <h3 className="text-lg font-bold">Today</h3>
             {myHabits.map((h) => <HabitTickRow key={h.id} habit={h} logs={habitsQ.data?.logs ?? []} today={today} />)}

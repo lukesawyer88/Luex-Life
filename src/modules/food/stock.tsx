@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { friendlyError } from "@/lib/family";
 import { supabase } from "@/lib/supabase";
@@ -40,8 +41,13 @@ export function StockTab(_: { target: FoodTarget; onGo: (t: FoodTarget) => void 
   const today = todayIn(family.timezone);
   const [edit, setEdit] = useState<{ open: boolean; item: StockItem | null; place?: Place }>({ open: false, item: null });
   const [receipt, setReceipt] = useState(false);
-  const items = stock.data ?? [];
-  const soon = useMemo(() => items.filter((s) => s.use_by && s.use_by <= addDaysKey(today, 2)).sort((a, b) => (a.use_by ?? "").localeCompare(b.use_by ?? "")), [items, today]);
+  // simple by default: just the freezer; the full fridge-and-cupboard tracker is an extra
+  const full = useExtra("food.stock");
+  const showScan = useExtra("food.scan");
+  const all = stock.data ?? [];
+  const items = useMemo(() => (full ? all : all.filter((s) => s.place === "freezer")), [all, full]);
+  const soon = useMemo(() => (full ? items.filter((s) => s.use_by && s.use_by <= addDaysKey(today, 2)).sort((a, b) => (a.use_by ?? "").localeCompare(b.use_by ?? "")) : []), [items, today, full]);
+  const sections = full ? SECTIONS : SECTIONS.filter((x) => x.key === "freezer");
   const refresh = () => refreshFood(qc, family.id);
 
   async function addToList(s: StockItem) {
@@ -82,9 +88,9 @@ export function StockTab(_: { target: FoodTarget; onGo: (t: FoodTarget) => void 
     <Windows>
       <RecordsWindow className="flex flex-col gap-3 overflow-hidden">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="flex-1 text-lg font-bold">Fridge, freezer and cupboard</h2>
-          <Button variant="outline" className="h-11 rounded-full" onClick={() => setReceipt(true)}><Receipt className="size-4" /> Scan a receipt</Button>
-          <Button className="h-11 rounded-full px-4 font-semibold" onClick={() => setEdit({ open: true, item: null })}><Plus className="size-4" /> Add</Button>
+          <h2 className="flex-1 text-lg font-bold">{full ? "Fridge, freezer and cupboard" : "Freezer"}</h2>
+          {full && showScan ? <Button variant="outline" className="h-11 rounded-full" onClick={() => setReceipt(true)}><Receipt className="size-4" /> Scan a receipt</Button> : null}
+          <Button className="h-11 rounded-full px-4 font-semibold" onClick={() => setEdit({ open: true, item: null, place: full ? undefined : "freezer" })}><Plus className="size-4" /> Add</Button>
         </div>
 
         <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto pr-1">
@@ -107,22 +113,22 @@ export function StockTab(_: { target: FoodTarget; onGo: (t: FoodTarget) => void 
 
           {!stock.isLoading && !items.length ? (
             <div className="py-10 text-center">
-              <p className="font-semibold">Nothing tracked yet</p>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">Add the things you want reminding about — fresh food with a use-by date and what's in the freezer. You don't need to add every tin.</p>
+              <p className="font-semibold">{full ? "Nothing tracked yet" : "Nothing in the freezer list yet"}</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{full ? "Add the things you want reminding about — fresh food with a use-by date and what's in the freezer. You don't need to add every tin." : "Add what goes in the freezer, so you know what's there without digging."}</p>
             </div>
           ) : null}
 
-          {SECTIONS.map((sec) => {
+          {sections.map((sec) => {
             const list = items.filter((s) => s.place === sec.key);
             if (!list.length) return null;
             return (
               <section key={sec.key} className="mb-4">
                 <div className="mb-1 flex items-center gap-2 px-1">
-                  <h3 className="flex-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{sec.label}</h3>
-                  <button type="button" className="text-xs font-semibold text-[var(--status-blue)]" onClick={() => setEdit({ open: true, item: null, place: sec.key })}>Add to {sec.label.toLowerCase()}</button>
+                  <h3 className="flex-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">{full ? sec.label : ""}</h3>
+                  {full ? <button type="button" className="text-xs font-semibold text-[var(--status-blue)]" onClick={() => setEdit({ open: true, item: null, place: sec.key })}>Add to {sec.label.toLowerCase()}</button> : null}
                 </div>
                 <ul className="space-y-1.5">
-                  {list.map((s) => <StockRow key={s.id} s={s} today={today} onUse={() => void useOne(s)} onUsedUp={() => void usedUp(s)} onEdit={() => setEdit({ open: true, item: s })} onList={() => void addToList(s)} />)}
+                  {list.map((s) => <StockRow key={s.id} s={s} today={today} full={full} onUse={() => void useOne(s)} onUsedUp={() => void usedUp(s)} onEdit={() => setEdit({ open: true, item: s })} onList={() => void addToList(s)} />)}
                 </ul>
               </section>
             );
@@ -130,32 +136,39 @@ export function StockTab(_: { target: FoodTarget; onGo: (t: FoodTarget) => void 
         </div>
       </RecordsWindow>
       <DetailWindow>
-        <div className="space-y-3 text-sm">
+        {full ? <div className="space-y-3 text-sm">
           <h3 className="text-base font-bold">Keeping it light</h3>
           <p className="text-muted-foreground">Track what matters: fresh things with a use-by date and what's in the freezer. Grown-ups get a "use soon" notification in the morning.</p>
           <p className="text-muted-foreground">Tap <strong>Use one</strong> as you go. When something runs low or is used up, you can add it to the shopping list in one tap.</p>
           <p className="text-muted-foreground">Scanning a barcode fills in the name. Receipts use shortened names, so you'll always check them first.</p>
           {soon.length ? <p className="font-semibold">{soon.length} thing{soon.length === 1 ? "" : "s"} to use soon.</p> : null}
-        </div>
+        </div> : (
+          <div className="space-y-3 text-sm">
+            <h3 className="text-base font-bold">The freezer list</h3>
+            <p className="text-muted-foreground">What's in the freezer, how many and when it went in. Tap <strong>Use one</strong> as you take something out.</p>
+          </div>
+        )}
       </DetailWindow>
-      <StockItemSheet open={edit.open} onOpenChange={(o) => setEdit((e) => ({ ...e, open: o }))} item={edit.item} place={edit.place} />
+      <StockItemSheet open={edit.open} onOpenChange={(o) => setEdit((e) => ({ ...e, open: o }))} item={edit.item} place={edit.place} simple={!full} />
       <ReceiptSheet open={receipt} onOpenChange={setReceipt} />
     </Windows>
   );
 }
 
-function StockRow({ s, today, onUse, onUsedUp, onEdit, onList }: { s: StockItem; today: string; onUse: () => void; onUsedUp: () => void; onEdit: () => void; onList: () => void }) {
-  const u = useByText(s.use_by, today);
+function StockRow({ s, today, full, onUse, onUsedUp, onEdit, onList }: { s: StockItem; today: string; full: boolean; onUse: () => void; onUsedUp: () => void; onEdit: () => void; onList: () => void }) {
+  const u = full ? useByText(s.use_by, today) : null;
   const amount = s.place === "freezer" && s.portions != null
     ? `${s.portions} portion${s.portions === 1 ? "" : "s"}`
     : [formatQty(s.quantity != null ? Number(s.quantity) : null), s.unit].filter(Boolean).join(" ");
-  const low = s.low_at != null && s.quantity != null && Number(s.quantity) <= Number(s.low_at);
+  const frozen = !full ? `In since ${new Date(s.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : null;
+  const low = full && s.low_at != null && s.quantity != null && Number(s.quantity) <= Number(s.low_at);
   return (
     <li className="flex min-h-14 flex-wrap items-center gap-2 rounded-2xl bg-background px-3 py-2">
       <button type="button" onClick={onEdit} className="min-w-0 flex-1 text-left">
         <span className="flex items-center gap-1.5 font-medium">{s.place === "freezer" ? <Snowflake className="size-3.5 text-[var(--status-blue)]" /> : null}{s.name}</span>
         <span className="flex flex-wrap gap-x-2 text-xs">
           {amount ? <span className="text-muted-foreground">{amount}</span> : null}
+          {frozen ? <span className="text-muted-foreground">{frozen}</span> : null}
           {u ? <span className={cn(u.tone === "red" ? "text-[var(--status-red)]" : u.tone === "amber" ? "text-[var(--status-amber)]" : "text-muted-foreground")}>{u.text}</span> : null}
           {low ? <span className="text-[var(--status-amber)]">Running low</span> : null}
         </span>

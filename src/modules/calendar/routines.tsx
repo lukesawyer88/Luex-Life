@@ -11,6 +11,7 @@ import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useExtra } from "@/lib/extras";
 import { friendlyError } from "@/lib/family";
 import { useFamilyState } from "@/lib/family-context";
 import { fitJpeg } from "@/lib/image";
@@ -44,6 +45,7 @@ const hhmm = (t: string | null) => (t ? t.slice(0, 5) : null);
 
 export function RoutinesTab() {
   const { family, me, members, role, isParent } = useFamilyState();
+  const timers = useExtra("cal.timers");
   const today = todayKey(family.timezone);
   const wd = weekdayOf(today);
   const q = useRoutines();
@@ -96,7 +98,7 @@ export function RoutinesTab() {
                               <span className="block text-xs text-muted-foreground">
                                 {run?.finished_at ? "Finished!" : `${done} of ${r.steps.length} done`}
                                 {hhmm(r.start_time) ? ` · ${hhmm(r.start_time)}` : ""}
-                                {totalMinutes(r) ? ` · ${totalMinutes(r)} min` : ""}
+                                {timers && totalMinutes(r) ? ` · ${totalMinutes(r)} min` : ""}
                               </span>
                             </span>
                             {run?.finished_at ? <Check className="size-7 text-[var(--status-green)]" /> : canDo ? <span className="rounded-full bg-[var(--tile-active)] px-4 py-2 text-sm font-semibold text-[var(--tile-active-fg)]">{run ? "Carry on" : "Start"}</span> : null}
@@ -134,10 +136,10 @@ export function RoutinesTab() {
       <DetailWindow>
         <h3 className="mb-2 text-sm font-bold">How routines work</h3>
         <ol className="list-decimal space-y-1.5 pl-5 text-sm">
-          <li>Tap a routine to start it. The clock starts counting down.</li>
+          <li>Tap a routine to start it.{timers ? " The clock starts counting down." : ""}</li>
           <li>Tick each step as you do it.</li>
           <li>Tick them all, then press Finish to get your stars.</li>
-          <li>Finish early and you'll see how much time you saved.</li>
+          {timers ? <li>Finish early and you'll see how much time you saved.</li> : null}
         </ol>
       </DetailWindow>
 
@@ -153,11 +155,12 @@ export function RoutinesTab() {
 
 function RoutineRunner({ routine, run, ticks, day, onClose }: { routine: RoutineWithSteps; run: RoutineRun | undefined; ticks: RoutineTick[]; day: string; onClose: () => void }) {
   const { family, members } = useFamilyState();
+  const timers = useExtra("cal.timers");
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const started = useRef(false);
-  const total = totalMinutes(routine) * 60;
+  const total = timers ? totalMinutes(routine) * 60 : 0;
   const done = new Set(ticks.map((t) => t.step_id));
   const current = routine.steps.find((s) => !done.has(s.id));
   const [stepStart, setStepStart] = useState<{ id: string | null; at: number }>({ id: null, at: Date.now() });
@@ -217,7 +220,7 @@ function RoutineRunner({ routine, run, ticks, day, onClose }: { routine: Routine
   const left = total - elapsed;
   const finished = run?.finished_at;
   const early = finished && total ? Math.floor((total - (new Date(finished).getTime() - new Date(run!.started_at).getTime()) / 1000) / 60) : 0;
-  const stepLeft = current?.minutes ? current.minutes * 60 - (now - stepStart.at) / 1000 : null;
+  const stepLeft = timers && current?.minutes ? current.minutes * 60 - (now - stepStart.at) / 1000 : null;
   const allTicked = routine.steps.length > 0 && routine.steps.every((s) => done.has(s.id));
 
   return (
@@ -258,7 +261,7 @@ function RoutineRunner({ routine, run, ticks, day, onClose }: { routine: Routine
                 <span className="min-w-0 flex-1">
                   <span className="text-xs font-semibold text-muted-foreground">Step {i + 1}</span>
                   <span className={cn("block text-xl font-bold", isDone && "line-through")}>{s.title}</span>
-                  {isNow && stepLeft !== null ? <span className={cn("text-sm font-semibold tabular-nums", stepLeft < 0 ? "text-[var(--status-red)]" : "text-muted-foreground")}>{stepLeft < 0 ? "Time's up" : `${mmss(stepLeft)} left`}</span> : s.minutes ? <span className="text-sm text-muted-foreground">{s.minutes} min</span> : null}
+                  {isNow && stepLeft !== null ? <span className={cn("text-sm font-semibold tabular-nums", stepLeft < 0 ? "text-[var(--status-red)]" : "text-muted-foreground")}>{stepLeft < 0 ? "Time's up" : `${mmss(stepLeft)} left`}</span> : timers && s.minutes ? <span className="text-sm text-muted-foreground">{s.minutes} min</span> : null}
                 </span>
                 <span className={cn("grid size-14 shrink-0 place-items-center rounded-full border-2", isDone ? "border-transparent bg-[var(--status-green)] text-white" : "border-[var(--status-green)] text-[var(--status-green)]")}>
                   {busy === s.id ? <Loader2 className="size-6 animate-spin" /> : <Check className="size-8" />}
@@ -391,6 +394,7 @@ function IconPicker({ value, onChange }: { value: string; onChange: (v: string) 
 
 function StepsEditor({ routine }: { routine: RoutineWithSteps }) {
   const { family } = useFamilyState();
+  const timers = useExtra("cal.timers");
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [icon, setIcon] = useState("check");
@@ -471,7 +475,7 @@ function StepsEditor({ routine }: { routine: RoutineWithSteps }) {
             <StepPicture step={s} small />
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold">{i + 1}. {s.title}</span>
-              {s.minutes ? <span className="text-xs text-muted-foreground">{s.minutes} min</span> : null}
+              {timers && s.minutes ? <span className="text-xs text-muted-foreground">{s.minutes} min</span> : null}
             </span>
             <Button type="button" variant="ghost" size="icon" className="size-9 rounded-full" aria-label="Add a photo" disabled={busy} onClick={() => { setPhotoFor(s); fileRef.current?.click(); }}><Camera className="size-4" /></Button>
             {s.photo_path ? <Button type="button" variant="ghost" size="icon" className="size-9 rounded-full" aria-label="Remove photo" disabled={busy} onClick={() => run(() => supabase.from("routine_steps").update({ photo_path: null }).eq("id", s.id))}><X className="size-4" /></Button> : null}
@@ -482,9 +486,9 @@ function StepsEditor({ routine }: { routine: RoutineWithSteps }) {
         ))}
       </ol>
       <div className="mt-2 space-y-2 rounded-2xl bg-muted/60 p-3">
-        <div className="grid grid-cols-[1fr_6rem] gap-2">
+        <div className={cn("grid gap-2", timers ? "grid-cols-[1fr_6rem]" : "grid-cols-1")}>
           <Input value={title} maxLength={80} placeholder="Next step, e.g. Brush teeth" aria-label="Step" onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void add(); } }} className="h-11" />
-          <Input type="number" inputMode="numeric" min={1} max={120} value={minutes} placeholder="Mins" aria-label="Minutes (optional)" onChange={(e) => setMinutes(e.target.value)} className="h-11" />
+          {timers ? <Input type="number" inputMode="numeric" min={1} max={120} value={minutes} placeholder="Mins" aria-label="Minutes (optional)" onChange={(e) => setMinutes(e.target.value)} className="h-11" /> : null}
         </div>
         <IconPicker value={icon} onChange={setIcon} />
         <Button type="button" className="h-11 rounded-full" disabled={busy || !title.trim()} onClick={add}><Plus className="size-4" /> Add step</Button>

@@ -3,6 +3,7 @@ import { BookOpen, Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useExtra } from "@/lib/extras";
 import { Button } from "@/components/ui/button";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
@@ -47,8 +48,10 @@ export function ExportSheet({ open, onOpenChange, start = "zip" }: { open: boole
   const [withBook, setWithBook] = useState(true);
   const [progress, setProgress] = useState<string | null>(null);
   const makeBook = useYearbookMaker();
+  // the year book belongs to Journal and memories (an extra); plain downloads are always there
+  const bookOn = useExtra("board.journal");
   const [seenOpen, setSeenOpen] = useState(false);
-  if (open !== seenOpen) { setSeenOpen(open); if (open) setWhat(start); }
+  if (open !== seenOpen) { setSeenOpen(open); if (open) setWhat(bookOn ? start : "zip"); }
 
   async function book() {
     setProgress("Making your year book…");
@@ -72,7 +75,7 @@ export function ExportSheet({ open, onOpenChange, start = "zip" }: { open: boole
       const media = await rows<Media>(supabase.from("board_media").select("*").eq("family_id", family.id).is("deleted_at", null)
         .gte("created_at", from).lt("created_at", to).order("created_at").limit(5000));
       const extras: { name: string; blob: Blob }[] = [];
-      if (withBook && month == null) {
+      if (bookOn && withBook && month == null) {
         const b = await makeBook(year, (d, t) => setProgress(`Making the year book: ${d} of ${t}`)).catch(() => null);
         if (b) extras.push({ name: `${family.name} ${year} year book.pdf`, blob: b });
       }
@@ -100,10 +103,12 @@ export function ExportSheet({ open, onOpenChange, start = "zip" }: { open: boole
       )}
     >
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <Chip on={what === "zip"} onClick={() => setWhat("zip")}><Download className="size-4" /> Download everything</Chip>
-          <Chip on={what === "book"} onClick={() => setWhat("book")}><BookOpen className="size-4" /> Year book PDF</Chip>
-        </div>
+        {bookOn ? (
+          <div className="flex flex-wrap gap-2">
+            <Chip on={what === "zip"} onClick={() => setWhat("zip")}><Download className="size-4" /> Download everything</Chip>
+            <Chip on={what === "book"} onClick={() => setWhat("book")}><BookOpen className="size-4" /> Year book PDF</Chip>
+          </div>
+        ) : null}
         <Field label="Which year?">
           <div className="flex flex-wrap gap-2">{years.map((y) => <Chip key={y} on={year === y} onClick={() => setYear(y)}>{y}</Chip>)}</div>
         </Field>
@@ -115,7 +120,7 @@ export function ExportSheet({ open, onOpenChange, start = "zip" }: { open: boole
                 {MONTHS.map((m, i) => <Chip key={m} on={month === i} onClick={() => setMonth(i)}>{m}</Chip>)}
               </div>
             </Field>
-            {month == null ? <Chip on={withBook} onClick={() => setWithBook((v) => !v)}><BookOpen className="size-4" /> Include the year book PDF</Chip> : null}
+            {bookOn && month == null ? <Chip on={withBook} onClick={() => setWithBook((v) => !v)}><BookOpen className="size-4" /> Include the year book PDF</Chip> : null}
             <p className="text-sm text-muted-foreground">You get the original photos, videos and voice notes you can see, at full quality, in a folder for each month. It's free, always.</p>
           </>
         ) : (
