@@ -195,7 +195,7 @@ export function useChoreDone(fromKey: string, toKey: string) {
   });
 }
 
-/** Stars earned (confirmed) since a day, per person – shown here, spent in Pocket Money and Rewards */
+/** Stars earned (confirmed) since a day, per person – shown here, spent in Rewards and Pocket Money */
 export function useStars(sinceKey: string) {
   const { family } = useFamilyState();
   return useQuery({

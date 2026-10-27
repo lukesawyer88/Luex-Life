@@ -1,5 +1,6 @@
 // This month: what's come in, what's gone out, what's left, and each category against its plan.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { CalendarClock, ChevronLeft, ChevronRight, ClipboardCopy, Coins, Plus, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -156,10 +157,10 @@ export function BudgetTab({ onGo }: TabProps) {
           {!hasPlan && lines.length ? <p className="mt-2 text-xs text-muted-foreground">Tap a category to plan how much to spend on it.</p> : null}
         </section>
 
-        <div className="lg:hidden"><Extras all={all} bills={bills} today={today} /></div>
+        <div className="lg:hidden"><Extras all={all} bills={bills} today={today} from={per.start} to={per.end} /></div>
       </RecordsWindow>
       <DetailWindow>
-        <Extras all={all} bills={bills} today={today} />
+        <Extras all={all} bills={bills} today={today} from={per.start} to={per.end} />
       </DetailWindow>
       <PaymentSheet open={adding} onOpenChange={setAdding} />
       <PlanSheet line={editing} periodStart={per.start} periodLabel={per.label} payments={out} settings={settings} onClose={() => setEditing(null)} onGo={onGo} />
@@ -206,7 +207,7 @@ function CategoryRow({ l, onClick }: { l: Line; onClick: () => void }) {
 }
 
 /** yearly bills, child costs and pocket money (right-hand window on big screens, below on phones) */
-function Extras({ all, bills, today }: { all: Payment[]; bills: Bill[]; today: string }) {
+function Extras({ all, bills, today, from, to }: { all: Payment[]; bills: Bill[]; today: string; from: string; to: string }) {
   const { members } = useFamilyState();
   const yearly = bills.filter((b) => b.every === "year" || b.every === "quarter");
   const aside = yearly.reduce((n, b) => n + perMonth(b.amount, b.every as Every), 0);
@@ -246,7 +247,7 @@ function Extras({ all, bills, today }: { all: Payment[]; bills: Bill[]; today: s
 
       <section>
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold"><Coins className="size-4" /> Pocket money</h3>
-        <p className="text-sm text-muted-foreground" data-testid="budget-pocket">Pocket money totals arrive with Pocket Money.</p>
+        <PocketTotals from={from} to={to} />
       </section>
     </div>
   );
@@ -328,5 +329,38 @@ function PlanSheet({ line, periodStart, periodLabel, payments, settings, onClose
       </Sheet>
       <PaymentSheet open={adding} onOpenChange={setAdding} preset={line?.cat ? { category_id: line.cat.id } : undefined} />
     </>
+  );
+}
+
+/** what the household paid out in pocket money to each child this period (from Rewards and Pocket Money) */
+const PAID_OUT = ["pay", "chore", "job", "bonus", "week", "interest", "match", "advance", "repay", "deduction"];
+function PocketTotals({ from, to }: { from: string; to: string }) {
+  const { family, members } = useFamilyState();
+  const children = members.filter((m) => m.role === "child" && !m.archived_at);
+  const q = useQuery({
+    queryKey: ["money", family.id, "pocket", from, to],
+    enabled: children.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("pocket_entries").select("member_id, amount, kind")
+        .eq("family_id", family.id).eq("status", "ok").in("kind", PAID_OUT).in("member_id", children.map((c) => c.id))
+        .gte("on_date", from).lte("on_date", to);
+      if (error) throw error;
+      const out = new Map<string, number>();
+      for (const r of (data ?? []) as { member_id: string; amount: number }[]) out.set(r.member_id, (out.get(r.member_id) ?? 0) + Number(r.amount));
+      return out;
+    },
+  });
+  if (!children.length) return <p className="text-sm text-muted-foreground" data-testid="budget-pocket">No children in the household.</p>;
+  const total = [...(q.data?.values() ?? [])].reduce((n, v) => n + v, 0);
+  return (
+    <div data-testid="budget-pocket">
+      <p className="text-2xl font-bold tabular-nums">{money(total)} <span className="text-sm font-normal text-muted-foreground">paid out</span></p>
+      <ul className="mt-1 space-y-0.5 text-sm">
+        {children.map((c) => (
+          <li key={c.id} className="flex justify-between"><span>{c.display_name}</span><b className="tabular-nums">{money(q.data?.get(c.id) ?? 0)}</b></li>
+        ))}
+      </ul>
+      <Link to="/m/$key" params={{ key: "pocket" }} className="mt-1 inline-block text-sm font-semibold underline">Open Rewards and Pocket Money</Link>
+    </div>
   );
 }

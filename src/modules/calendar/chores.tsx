@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import {
-  Bath, BedDouble, BookOpen, Car, Check, Dog, Fish, Flower2, Hourglass, Loader2, Pencil, Plus, Shirt, ShoppingBasket, Sofa,
+  Bath, BedDouble, BookOpen, Camera, Car, Check, Dog, Fish, Flower2, Hourglass, Loader2, Pencil, Plus, Shirt, ShoppingBasket, Sofa,
   Sparkles, Star, Trash2, Undo2, Users, Utensils, WashingMachine, type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { MemberAvatar } from "@/components/member-avatar";
@@ -13,9 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyError, type Member } from "@/lib/family";
+import { fitJpeg } from "@/lib/image";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { removeProofPhoto, uploadProofPhoto, useRewardPhotoUrls } from "@/modules/rewards/data";
 
 import { useChoreDone, useChores, useStars, type Chore, type ChoreDone } from "./data";
 import { countBefore, datesBetween } from "./recurrence";
@@ -65,6 +68,12 @@ export function ChoresTab() {
   const stars = useStars(wk);
   const [editing, setEditing] = useState<Chore | "new" | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // a chore that needs a photo waits here while the camera is open
+  const [photoFor, setPhotoFor] = useState<Job | null>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+  // a parent checks the photo before confirming
+  const [checking, setChecking] = useState<ChoreDone | null>(null);
+  const checkUrls = useRewardPhotoUrls([checking?.photo_path]);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["cal", family.id] });
 
@@ -97,11 +106,19 @@ export function ChoresTab() {
     return g;
   }, [jobs, members]);
 
-  async function tick(j: Job) {
+  async function tick(j: Job, photo?: File) {
+    if (j.chore.needs_photo && !isParent && !photo) {
+      setPhotoFor(j);
+      photoInput.current?.click();
+      return;
+    }
     setBusy(j.chore.id + (j.forMember ?? ""));
     try {
-      const { error } = await supabase.from("chore_done").insert({ family_id: family.id, chore_id: j.chore.id, due_on: day, for_member: j.forMember ?? me.id });
-      if (error) throw error;
+      const photo_path = photo ? await uploadProofPhoto(family.id, me.id, await fitJpeg(photo, 1280)) : null;
+      const { error } = await supabase.from("chore_done").insert({ family_id: family.id, chore_id: j.chore.id, due_on: day, for_member: j.forMember ?? me.id, photo_path });
+      if (error) { void removeProofPhoto(photo_path); throw error; }
+      // nobody needs to check it, so the photo isn't kept
+      if (photo_path && !j.chore.needs_confirm) void removeProofPhoto(photo_path);
       await refresh();
       if (j.chore.needs_confirm && !isParent) toast.success("Done! A parent will check it");
       else toast.success("Done!");
@@ -125,10 +142,13 @@ export function ChoresTab() {
     }
   }
   async function confirm(d: ChoreDone) {
+    if (d.photo_path && checking?.id !== d.id) { setChecking(d); return; }
     setBusy(d.id);
     try {
       const { error } = await supabase.from("chore_done").update({ confirmed_at: new Date().toISOString() }).eq("id", d.id);
       if (error) throw error;
+      setChecking(null);
+      void removeProofPhoto(d.photo_path);
       await refresh();
       toast.success("Checked");
     } catch (e) {
@@ -194,6 +214,8 @@ export function ChoresTab() {
                               <p className="truncate text-xs text-muted-foreground">
                                 {PART_LABEL[j.chore.part_of_day]}
                                 {j.chore.stars ? ` · ${j.chore.stars} ${j.chore.stars === 1 ? "star" : "stars"}` : ""}
+                                {Number(j.chore.money) > 0 ? ` · £${Number(j.chore.money).toFixed(2)}` : ""}
+                                {j.chore.needs_photo && !d ? " · needs a photo" : ""}
                                 {j.forMember === null && d ? ` · done by ${d.for_member === me.id ? "you" : name(d.for_member)}` : ""}
                                 {waiting ? " · waiting for a parent to check" : ""}
                               </p>
@@ -267,10 +289,41 @@ export function ChoresTab() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs opacity-75">Stars come from chores and routines once they're checked. Spending them on rewards and pocket money arrives with Pocket Money and Rewards.</p>
+        <p className="mt-3 text-xs opacity-75">Stars come from chores and routines once they're checked. <Link to="/m/$key" params={{ key: "pocket" }} className="font-semibold underline">Spend stars in Rewards</Link></p>
       </DetailWindow>
 
       {isParent ? <ChoreEditor chore={editing} onClose={() => setEditing(null)} /> : null}
+      <input
+        ref={photoInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        data-testid="chore-photo-input"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          const j = photoFor;
+          setPhotoFor(null);
+          if (file && j) void tick(j, file);
+        }}
+      />
+      <Sheet
+        open={!!checking}
+        onOpenChange={(o) => !o && setChecking(null)}
+        title="Check the photo"
+        footer={
+          <>
+            <Button className="h-11 flex-1 rounded-full sm:flex-none" disabled={!checking || busy === checking.id} onClick={() => checking && confirm(checking)}>Looks good, confirm</Button>
+            <Button variant="ghost" className="h-11 rounded-full" onClick={() => setChecking(null)}>Not yet</Button>
+          </>
+        }
+      >
+        {checking?.photo_path && checkUrls.data?.get(checking.photo_path) ? (
+          <img src={checkUrls.data.get(checking.photo_path)} alt="Proof photo" className="max-h-[60dvh] w-full rounded-2xl object-contain" />
+        ) : <p className="text-sm text-muted-foreground">{checkUrls.isError ? "The photo couldn't open." : "Loading the photo…"}</p>}
+        <p className="mt-2 text-xs text-muted-foreground">The photo is deleted once you confirm.</p>
+      </Sheet>
     </Windows>
   );
 }
@@ -359,6 +412,7 @@ function ChoreEditor({ chore, onClose }: { chore: Chore | "new" | null; onClose:
   const blank = () => ({
     title: "", icon: "sparkles", startsOn: today, repeat: "daily" as Repeat, days: [] as number[], mode: "each" as Chore["mode"],
     people: [] as string[], part: "any" as Chore["part_of_day"], confirm: false, stars: 1, notes: "", cleaning: false, active: true,
+    money: "", photo: false,
   });
   const [f, setF] = useState(blank);
   const [busy, setBusy] = useState(false);
@@ -371,6 +425,7 @@ function ChoreEditor({ chore, onClose }: { chore: Chore | "new" | null; onClose:
         title: existing.title, icon: existing.icon, startsOn: existing.starts_on, repeat: rr.r, days: rr.days, mode: existing.mode,
         people: existing.people, part: existing.part_of_day, confirm: existing.needs_confirm, stars: existing.stars,
         notes: existing.notes ?? "", cleaning: existing.is_cleaning, active: existing.active,
+        money: Number(existing.money) > 0 ? Number(existing.money).toFixed(2) : "", photo: existing.needs_photo,
       });
     } else setF(blank());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -380,12 +435,14 @@ function ChoreEditor({ chore, onClose }: { chore: Chore | "new" | null; onClose:
 
   async function save() {
     if (!f.title.trim()) return void toast.error("Give the chore a name");
+    const pay = f.money.trim() ? Math.round(Number(f.money.replace(/[£,\s]/g, "")) * 100) / 100 : 0;
+    if (!Number.isFinite(pay) || pay < 0 || pay >= 1000) return void toast.error("Type an amount like 0.50");
     setBusy(true);
     try {
       const row = {
         title: f.title.trim(), icon: f.icon, rrule: toRule(f.repeat, f.days, f.startsOn), starts_on: f.startsOn, mode: f.mode,
         people: f.people, part_of_day: f.part, needs_confirm: f.confirm, stars: Math.max(0, Math.min(10, f.stars)),
-        notes: f.notes.trim() || null, is_cleaning: f.cleaning, active: f.active,
+        notes: f.notes.trim() || null, is_cleaning: f.cleaning, active: f.active, money: pay, needs_photo: f.photo,
       };
       const { error } = existing
         ? await supabase.from("chores").update(row).eq("id", existing.id)
@@ -502,6 +559,17 @@ function ChoreEditor({ chore, onClose }: { chore: Chore | "new" | null; onClose:
           </div>
         </Field>
 
+        <Field label="Pays money" hint="Paid into their pocket money when it's done (and checked, if a parent checks it). Leave empty for none.">
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-semibold">£</span>
+            <Input data-testid="chore-money" inputMode="decimal" value={f.money} placeholder="0.00" className="h-11 w-32" onChange={(e) => set("money", e.target.value)} />
+          </div>
+        </Field>
+
+        <label className="flex min-h-10 items-center justify-between gap-3 text-sm font-semibold">
+          <span className="flex items-center gap-2"><Camera className="size-4" /> Needs a photo to show it's done</span>
+          <Switch data-testid="chore-photo" checked={f.photo} onCheckedChange={(v) => set("photo", v)} />
+        </label>
         <label className="flex min-h-10 items-center justify-between gap-3 text-sm font-semibold">
           A parent checks it before it counts
           <Switch checked={f.confirm} onCheckedChange={(v) => set("confirm", v)} />
