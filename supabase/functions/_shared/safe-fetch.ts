@@ -20,7 +20,10 @@ function v6Private(ip: string): boolean {
   if (s === "::" || s === "::1") return true;
   const mapped = /::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(s);
   if (mapped) return v4Private(mapped[1]);
-  return /^f[cd]/.test(s) || /^fe[89ab]/.test(s) || /^ff/.test(s) || s.startsWith("64:ff9b:") || s.startsWith("2001:db8:");
+  // IPv4-compatible (::a.b.c.d / ::7f00:1), 6to4, Teredo and old site-local ranges are refused too
+  if (/^::[0-9a-f]{1,4}(:[0-9a-f]{1,4})?$/.test(s) || /^::\d+\.\d+\.\d+\.\d+$/.test(s)) return true;
+  return /^f[cd]/.test(s) || /^fe[89abcdef]/.test(s) || /^ff/.test(s) || s.startsWith("64:ff9b:") || s.startsWith("2001:db8:")
+    || s.startsWith("2002:") || /^2001:0{0,4}:/.test(s);
 }
 
 export function isPrivateAddress(ip: string): boolean {

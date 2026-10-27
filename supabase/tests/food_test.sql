@@ -25,7 +25,7 @@ declare
   ua uuid := gen_random_uuid(); up uuid := gen_random_uuid(); ug uuid := gen_random_uuid();
   uk uuid := gen_random_uuid(); ub uuid := gen_random_uuid();
   fa uuid; fb uuid; ann uuid; pat uuid; gran uuid; kid uuid; tom uuid; ben uuid;
-  rc uuid; rc2 uuid; pl uuid; req uuid; li uuid; it uuid; st uuid; tk uuid; x uuid; tok text; n int; t text; ok boolean;
+  rc uuid; rc2 uuid; col uuid; big text; pl uuid; req uuid; li uuid; it uuid; st uuid; tk uuid; x uuid; tok text; n int; t text; ok boolean;
 begin
   insert into auth.users (id, email, aud, role) values
     (ua, 'ann@test.dev', 'authenticated', 'authenticated'), (up, 'pat@test.dev', 'authenticated', 'authenticated'),
@@ -229,6 +229,90 @@ begin
   begin
     insert into public.food_diary (family_id, member_id, label, kcal) values (fa, gran, 'Cake', 900);
     perform pg_temp.chk(false, 'someone logged calories for someone else');
+  exception when others then perform pg_temp.chk(true, ''); end;
+
+  -- ===== fixes from the security review
+  perform pg_temp.act(uk, 'kid@test.dev');
+  insert into public.food_plan (family_id, day, slot, title) values (fa, current_date + 4, 'dinner', 'Sweets for tea') returning id into x;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.food_plan set status = 'declined' where id = x;
+  perform pg_temp.act(ug, 'gran@test.dev');
+  begin
+    update public.food_plan set status = 'planned' where id = x;
+    perform pg_temp.chk(false, 'a grown-up who is not a parent overturned a parent''s no');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.act(uk, 'kid@test.dev');
+  begin
+    update public.food_recipes set last_made = '1999-01-01' where id = rc;
+    perform pg_temp.chk(false, 'someone rewrote when a recipe was last made');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    update public.food_recipes set last_made = null where id = rc;
+    perform pg_temp.chk(false, 'someone cleared when a recipe was last made');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  select id into x from public.food_list_items where name = 'Milk';
+  begin
+    update public.food_list_items set aisle = 'Sweets' where id = x;
+    perform pg_temp.chk(false, 'a child moved someone else''s item to another aisle');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  update public.food_known_items set aisle = 'Sweets' where family_id = fa;
+  get diagnostics n = row_count; perform pg_temp.chk(n = 0, 'a child changed the family''s remembered aisles');
+  insert into public.food_list_items (list_id, family_id, name, aisle) values (li, fa, 'Cheese', 'Sweets') returning id into x;
+  perform pg_temp.chk((select aisle is distinct from 'Sweets' from public.food_list_items where id = x), 'a child taught the family a new aisle');
+  -- removing a collection doesn't lock the recipes in it
+  perform pg_temp.act(ua, 'ann@test.dev');
+  insert into public.food_collections (family_id, title) values (fa, 'Faves') returning id into col;
+  update public.food_recipes set collections = array[col] where id = rc;
+  delete from public.food_collections where id = col;
+  perform pg_temp.act(ug, 'gran@test.dev');
+  update public.food_recipes set notes = 'Still editable' where id = rc;
+  perform pg_temp.chk((select notes from public.food_recipes where id = rc) = 'Still editable', 'a removed collection blocked editing a recipe');
+  -- someone leaving doesn't lock the rows that mention them
+  perform pg_temp.act(ua, 'ann@test.dev');
+  insert into public.food_list_items (list_id, family_id, name, assignee) values (li, fa, 'Batteries', tom) returning id into x;
+  perform pg_temp.sys(); update public.family_members set archived_at = now() where id = tom;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.food_list_items set done_at = now() where id = x;
+  perform pg_temp.chk((select done_at is not null from public.food_list_items where id = x), 'an item for someone who left can''t be ticked');
+  perform pg_temp.sys(); update public.family_members set archived_at = null where id = tom;
+  -- no oversized rows
+  perform pg_temp.act(uk, 'kid@test.dev');
+  big := repeat('x', 100000);
+  begin
+    insert into public.food_recipes (family_id, title, nutrition) values (fa, 'Big', jsonb_build_object('note', big));
+    perform pg_temp.chk(false, 'an oversized recipe was saved');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.food_recipes (family_id, title, tags) values (fa, 'Big tags', array[big]);
+    perform pg_temp.chk(false, 'oversized tags were saved');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.food_lunches (family_id, member_id, day, items) values (fa, kid, current_date + 9, array[big]);
+    perform pg_temp.chk(false, 'an oversized lunch was saved');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.food_recipes (family_id, title, source_url) values (fa, 'Bad link', 'javascript:alert(1)');
+    perform pg_temp.chk(false, 'a recipe link that is not a web address');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- photos switch applies to food photos
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.board_settings set photos = false where member_id = kid;
+  perform pg_temp.act(uk, 'kid@test.dev');
+  perform pg_temp.chk(not public.food_file_ok(fa || '/food/recipes/k.jpg', true), 'a child with photos off added a food photo');
+  perform pg_temp.chk(not public.food_can_add_photo(), 'the import service would fetch a picture for a child with photos off');
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.board_settings set photos = true where member_id = kid;
+  -- import rate limit
+  perform pg_temp.sys();
+  for n in 1..15 loop perform public.food_log_import(kid); end loop;
+  perform pg_temp.chk(not public.food_log_import(kid), 'recipe imports are not limited');
+  -- a private calendar event can't be attached to a meal by someone who can't see it
+  perform pg_temp.act(ua, 'ann@test.dev');
+  insert into public.cal_events (family_id, title, starts_at, ends_at, visibility, viewers) values (fa, 'Surprise', now(), now() + interval '1 hour', 'selected', array[pat]) returning id into x;
+  perform pg_temp.act(ug, 'gran@test.dev');
+  begin
+    update public.food_plan set cal_event_id = x where id = pl;
+    perform pg_temp.chk(false, 'a meal was linked to a private event its editor can''t see');
   exception when others then perform pg_temp.chk(true, ''); end;
 
   -- ===== files

@@ -71,12 +71,18 @@ begin
             raise exception 'Only the person who added this recipe, or a parent, can change it';
           end if;
         end if;
-        if new.times_made <> old.times_made and new.times_made <> old.times_made + 1 then raise exception 'That change is not allowed'; end if;
-        if new.last_made > current_date + 1 then raise exception 'That change is not allowed'; end if;
+        -- "I made this": one more time, dated today (family time); nobody can rewrite the history
+        if new.times_made is distinct from old.times_made or new.last_made is distinct from old.last_made then
+          if new.times_made <> old.times_made + 1
+             or new.last_made is distinct from (now() at time zone coalesce((select timezone from public.families where id = new.family_id), 'Europe/London'))::date then
+            raise exception 'That change is not allowed';
+          end if;
+        end if;
       end if;
       if new.photo_path is not null and new.photo_path not like new.family_id::text || '/food/%' then raise exception 'That change is not allowed'; end if;
-      if exists (select 1 from unnest(new.collections) c where not exists (
-          select 1 from public.food_collections x where x.id = c and x.family_id = new.family_id)) then
+      if exists (select 1 from unnest(new.collections) c
+          where (tg_op = 'INSERT' or not (c = any(old.collections)))
+            and not exists (select 1 from public.food_collections x where x.id = c and x.family_id = new.family_id)) then
         raise exception 'That change is not allowed';
       end if;
       new.updated_at := now();
@@ -90,7 +96,11 @@ begin
     when 'food_plan' then
       if tg_op = 'INSERT' then
         new.created_by := me; new.created_at := now(); new.cal_event_id := null;
-        if not adult then new.status := 'requested'; new.requested_by := me; new.cook := null;
+        if not adult then
+          new.status := 'requested'; new.requested_by := me; new.cook := null;
+          if (select count(*) from public.food_plan where requested_by = me and created_at > now() - interval '1 day') >= 5 then
+            raise exception 'That''s enough requests for today';
+          end if;
         elsif new.status = 'requested' then new.requested_by := me;
         else new.status := 'planned'; new.requested_by := null;
         end if;
@@ -104,7 +114,7 @@ begin
              or new.cook is distinct from old.cook or new.cal_event_id is distinct from old.cal_event_id then
             raise exception 'Ask a grown-up to change the meal plan';
           end if;
-        elsif new.status <> old.status and old.status = 'requested' and not parent then
+        elsif new.status <> old.status and not parent and (old.status in ('requested', 'declined') or new.status in ('requested', 'declined')) then
           raise exception 'Only a parent can say yes or no to a request';
         end if;
       end if;
@@ -117,10 +127,12 @@ begin
       if new.takeaway_id is not null and not exists (select 1 from public.food_takeaways where id = new.takeaway_id and family_id = new.family_id) then
         raise exception 'That change is not allowed';
       end if;
-      if new.cal_event_id is not null and not exists (select 1 from public.cal_events where id = new.cal_event_id and family_id = new.family_id) then
+      if new.cal_event_id is not null and new.cal_event_id is distinct from (case when tg_op = 'UPDATE' then old.cal_event_id end)
+         and not (exists (select 1 from public.cal_events where id = new.cal_event_id and family_id = new.family_id) and public.can_see_event(new.cal_event_id)) then
         raise exception 'That change is not allowed';
       end if;
-      if not public.members_in_family(new.family_id, array_remove(new.people || new.cook, null)) then
+      if (tg_op = 'INSERT' or new.people is distinct from old.people or new.cook is distinct from old.cook)
+         and not public.members_in_family(new.family_id, array_remove(new.people || new.cook, null)) then
         raise exception 'Those people are not in this family';
       end if;
       new.updated_at := now();
@@ -128,7 +140,7 @@ begin
     when 'food_lunches' then
       new.updated_by := me; new.updated_at := now();
       if tg_op = 'UPDATE' and (new.member_id <> old.member_id or new.day <> old.day) then raise exception 'That change is not allowed'; end if;
-      if not public.members_in_family(new.family_id, array[new.member_id]) then raise exception 'That person is not in this family'; end if;
+      if tg_op = 'INSERT' and not public.members_in_family(new.family_id, array[new.member_id]) then raise exception 'That person is not in this family'; end if;
 
     when 'food_lists' then
       if tg_op = 'INSERT' then new.created_by := me; new.created_at := now(); new.archived_at := null;
@@ -138,7 +150,7 @@ begin
       null;
 
     when 'food_known_items' then
-      if coalesce(current_setting('luex.foodsys', true), 'off') = 'on' then return new; end if;
+      if coalesce(current_setting('luex.foodsys', true), 'off') = 'on' and pg_trigger_depth() > 1 then return new; end if;
       if new.name_key <> old.name_key or new.name <> old.name or new.used_count <> old.used_count
          or new.last_used <> old.last_used or new.barcode is distinct from old.barcode then
         raise exception 'That change is not allowed';
@@ -155,6 +167,8 @@ begin
           raise exception 'That change is not allowed';
         end if;
         -- the aisle this family used last time
+        -- children can't teach the family a new aisle
+        if not adult then new.aisle := null; end if;
         if new.aisle is null then new.aisle := public.food_remember_item(new.family_id, new.name, null, new.unit);
         else perform public.food_remember_item(new.family_id, new.name, new.aisle, new.unit); end if;
       else
@@ -164,14 +178,14 @@ begin
         end if;
         if not adult and old.added_by is distinct from me and (new.name <> old.name or new.quantity is distinct from old.quantity
            or new.unit is distinct from old.unit or new.note <> old.note or new.assignee is distinct from old.assignee
-           or new.photo_path is distinct from old.photo_path) then
+           or new.photo_path is distinct from old.photo_path or new.aisle is distinct from old.aisle) then
           raise exception 'Only a grown-up can change someone else''s item';
         end if;
         if new.done_at is distinct from old.done_at then
           if new.done_at is null then new.done_by := null; else new.done_at := now(); new.done_by := me; end if;
         end if;
         -- moving an item to another aisle teaches the family's list where it goes
-        if new.aisle is distinct from old.aisle and new.aisle is not null then
+        if new.aisle is distinct from old.aisle and new.aisle is not null and adult then
           perform set_config('luex.foodsys', 'on', true);
           update public.food_known_items set aisle = new.aisle
             where family_id = new.family_id and name_key = lower(btrim(regexp_replace(new.name, '\s+', ' ', 'g')));
@@ -179,7 +193,8 @@ begin
         end if;
       end if;
       if new.photo_path is not null and new.photo_path not like new.family_id::text || '/food/%' then raise exception 'That change is not allowed'; end if;
-      if new.assignee is not null and not public.members_in_family(new.family_id, array[new.assignee]) then
+      if new.assignee is not null and (tg_op = 'INSERT' or new.assignee is distinct from old.assignee)
+         and not public.members_in_family(new.family_id, array[new.assignee]) then
         raise exception 'That person is not in this family';
       end if;
 
@@ -203,7 +218,7 @@ begin
         raise exception 'That change is not allowed';
       end if;
       if not exists (select 1 from public.food_takeaways where id = new.takeaway_id and family_id = new.family_id)
-         or not public.members_in_family(new.family_id, array[new.member_id]) then
+         or (tg_op = 'INSERT' and not public.members_in_family(new.family_id, array[new.member_id])) then
         raise exception 'That change is not allowed';
       end if;
 
@@ -304,6 +319,37 @@ values ('food-files', 'food-files', false, 10485760, array['image/jpeg', 'image/
 on conflict (id) do nothing;
 
 -- <family>/food/<anything>: the family reads; family members add (children only if photos are on for them)
+-- the family's space: Board and Food files together
+create or replace function public.food_bytes_used(f uuid)
+returns bigint language sql stable security definer set search_path = '' as $$
+  select coalesce(sum((o.metadata ->> 'size')::bigint), 0)::bigint from storage.objects o
+  where o.bucket_id in ('board-media', 'food-files') and o.name like f::text || '/%'
+$$;
+revoke all on function public.food_bytes_used(uuid) from public, anon, authenticated;
+
+-- may I add a food photo right now? (children's photo switch, and the family's space)
+create or replace function public.food_can_add_photo()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select public.my_family_id() is not null and public.board_allowed(public.my_member_id(), 'photos')
+    and public.food_bytes_used(public.my_family_id()) < public.board_allowance()
+$$;
+revoke all on function public.food_can_add_photo() from public, anon;
+grant execute on function public.food_can_add_photo() to authenticated;
+
+-- recipe imports: one log entry per try, refused over 15 in 10 minutes (atomic, for the import service only)
+create or replace function public.food_log_import(p_member uuid)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  perform pg_advisory_xact_lock(hashtext('food_import:' || p_member::text));
+  select count(*) into n from public.food_import_log where member_id = p_member and at > now() - interval '10 minutes';
+  if n >= 15 then return false; end if;
+  insert into public.food_import_log (member_id) values (p_member);
+  return true;
+end $$;
+revoke all on function public.food_log_import(uuid) from public, anon, authenticated;
+grant execute on function public.food_log_import(uuid) to service_role;
+
 create or replace function public.food_file_ok(p_name text, p_write boolean)
 returns boolean language plpgsql stable security definer set search_path = '' as $$
 declare parts text[] := string_to_array(p_name, '/');
@@ -311,7 +357,7 @@ declare parts text[] := string_to_array(p_name, '/');
 begin
   if parts[1] is null or parts[1] !~ uuid_re or parts[2] is distinct from 'food' or array_length(parts, 1) < 3 then return false; end if;
   if parts[1]::uuid is distinct from public.my_family_id() then return false; end if;
-  return not p_write or public.board_allowed(public.my_member_id(), 'photos');
+  return not p_write or public.food_can_add_photo();
 end $$;
 create or replace function public.food_file_can_remove(p_name text, p_owner uuid, p_owner_id text)
 returns boolean language plpgsql stable security definer set search_path = '' as $$

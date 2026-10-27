@@ -46,7 +46,7 @@ create table public.food_recipes (
   title text not null check (char_length(title) between 1 and 120),
   description text not null default '' check (char_length(description) <= 2000),
   photo_path text check (char_length(photo_path) <= 300),
-  source_url text check (char_length(source_url) <= 1000),
+  source_url text check (char_length(source_url) <= 1000 and (source_url is null or source_url ~* '^https?://')),
   servings integer not null default 4 check (servings between 1 and 100),
   prep_min integer check (prep_min between 0 and 2000),
   cook_min integer check (cook_min between 0 and 5000),
@@ -54,17 +54,18 @@ create table public.food_recipes (
   ingredients jsonb not null default '[]'::jsonb check (jsonb_typeof(ingredients) = 'array' and jsonb_array_length(ingredients) <= 100),
   -- [{ text, timer_s, uses: [ingredient index] }]
   steps jsonb not null default '[]'::jsonb check (jsonb_typeof(steps) = 'array' and jsonb_array_length(steps) <= 100),
-  tags text[] not null default '{}' check (cardinality(tags) <= 30),
+  tags text[] not null default '{}' check (cardinality(tags) <= 30 and char_length(array_to_string(tags, '')) <= 900),
   -- what's in it (matched against people's "avoid" labels)
-  allergens text[] not null default '{}' check (cardinality(allergens) <= 20),
+  allergens text[] not null default '{}' check (cardinality(allergens) <= 20 and char_length(array_to_string(allergens, '')) <= 400),
   collections uuid[] not null default '{}' check (cardinality(collections) <= 20),
   -- per serving, estimates: { kcal, protein, carbs, fat }
-  nutrition jsonb check (nutrition is null or jsonb_typeof(nutrition) = 'object'),
+  nutrition jsonb check (nutrition is null or (jsonb_typeof(nutrition) = 'object' and pg_column_size(nutrition) < 2000)),
   notes text not null default '' check (char_length(notes) <= 4000),
   times_made integer not null default 0 check (times_made >= 0),
   last_made date,
   -- a seasonal menu (e.g. Christmas dinner): a timeline of steps relative to serving time
-  timeline jsonb check (timeline is null or (jsonb_typeof(timeline) = 'array' and jsonb_array_length(timeline) <= 60)),
+  timeline jsonb check (timeline is null or (jsonb_typeof(timeline) = 'array' and jsonb_array_length(timeline) <= 60
+    and pg_column_size(timeline) < 20000)),
   created_by uuid references public.family_members (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -120,7 +121,7 @@ create table public.food_lunches (
   family_id uuid not null references public.families (id) on delete cascade,
   member_id uuid not null references public.family_members (id) on delete cascade,
   day date not null,
-  items text[] not null default '{}' check (cardinality(items) <= 20),
+  items text[] not null default '{}' check (cardinality(items) <= 20 and char_length(array_to_string(items, '')) <= 1200),
   packed boolean not null default false,
   notes text not null default '' check (char_length(notes) <= 300),
   updated_by uuid references public.family_members (id) on delete set null,
@@ -201,7 +202,7 @@ create table public.food_stock (
   barcode text check (char_length(barcode) <= 32),
   from_recipe uuid references public.food_recipes (id) on delete set null,
   -- per 100 g or per item, from the barcode database (estimates)
-  nutrition jsonb check (nutrition is null or jsonb_typeof(nutrition) = 'object'),
+  nutrition jsonb check (nutrition is null or (jsonb_typeof(nutrition) = 'object' and pg_column_size(nutrition) < 2000)),
   added_by uuid references public.family_members (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -399,7 +400,8 @@ create policy food_aisles_remove on public.food_aisles for delete to authenticat
 
 create policy food_known_items_read on public.food_known_items for select to authenticated using (family_id = (select public.my_family_id()));
 create policy food_known_items_change on public.food_known_items for update to authenticated
-  using (family_id = (select public.my_family_id())) with check (family_id = (select public.my_family_id()));
+  using (family_id = (select public.my_family_id()) and public.is_family_adult(family_id))
+  with check (family_id = (select public.my_family_id()));
 
 create policy food_list_items_read on public.food_list_items for select to authenticated using (family_id = (select public.my_family_id()));
 create policy food_list_items_add on public.food_list_items for insert to authenticated with check (family_id = (select public.my_family_id()));
