@@ -466,6 +466,51 @@ export type Database = {
         { family_id: string; member_id: string; name: string; icon?: string; start_time?: string | null; days?: number[]; reward?: string | null; stars?: number; position?: number; active?: boolean },
         { member_id?: string; name?: string; icon?: string; start_time?: string | null; days?: number[]; reward?: string | null; stars?: number; position?: number; active?: boolean }
       >;
+      school_activities: Table<
+        { id: string; family_id: string; member_id: string; place_id: string | null; event_id: string; kit: string[]; cost: number | null; cost_every: string | null; created_by: string | null; created_at: string },
+        { family_id: string; member_id: string; place_id?: string | null; event_id: string; kit?: string[]; cost?: number | null; cost_every?: string | null },
+        { place_id?: string | null; kit?: string[]; cost?: number | null; cost_every?: string | null }
+      >;
+      school_children: Table<
+        { member_id: string; family_id: string; place_id: string | null; class_name: string | null; teacher: string | null; day_starts: string | null; day_ends: string | null; updated_at: string },
+        { member_id: string; family_id: string; place_id?: string | null; class_name?: string | null; teacher?: string | null; day_starts?: string | null; day_ends?: string | null },
+        { place_id?: string | null; class_name?: string | null; teacher?: string | null; day_starts?: string | null; day_ends?: string | null }
+      >;
+      school_days: Table<
+        { member_id: string; family_id: string; weekday: number; bring: string[]; lunch: string | null },
+        { member_id: string; family_id: string; weekday: number; bring?: string[]; lunch?: string | null },
+        { bring?: string[]; lunch?: string | null }
+      >;
+      school_people: Table<
+        { member_id: string; family_id: string; morning: boolean },
+        { member_id: string; family_id: string; morning?: boolean },
+        { morning?: boolean }
+      >;
+      school_places: Table<
+        { id: string; family_id: string; name: string; kind: string; phone: string | null; notes: string; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; name: string; kind?: string; phone?: string | null; notes?: string },
+        { name?: string; kind?: string; phone?: string | null; notes?: string; archived_at?: string | null }
+      >;
+      school_run_changes: Table<
+        { id: string; family_id: string; member_id: string; on_date: string; drop_by: string | null; pick_by: string | null; pick_time: string | null; note: string; created_by: string | null; created_at: string },
+        { family_id: string; member_id: string; on_date: string; drop_by?: string | null; pick_by?: string | null; pick_time?: string | null; note?: string },
+        { drop_by?: string | null; pick_by?: string | null; pick_time?: string | null; note?: string }
+      >;
+      school_runs: Table<
+        { member_id: string; family_id: string; weekday: number; drop_by: string | null; pick_by: string | null; pick_time: string | null },
+        { member_id: string; family_id: string; weekday: number; drop_by?: string | null; pick_by?: string | null; pick_time?: string | null },
+        { drop_by?: string | null; pick_by?: string | null; pick_time?: string | null }
+      >;
+      school_sends: Table<
+        { member_id: string; for_date: string },
+        { member_id: string; for_date: string },
+        {  }
+      >;
+      school_tasks: Table<
+        { id: string; family_id: string; member_id: string | null; title: string; kind: string; due_on: string | null; amount: number | null; note: string; photo_path: string | null; done_at: string | null; done_by: string | null; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; member_id?: string | null; title: string; kind?: string; due_on?: string | null; amount?: number | null; note?: string; photo_path?: string | null },
+        { member_id?: string | null; title?: string; kind?: string; due_on?: string | null; amount?: number | null; note?: string; photo_path?: string | null; done_at?: string | null; deleted_at?: string | null }
+      >;
       star_entries: Table<
         { id: string; family_id: string; member_id: string; delta: number; kind: string; source_key: string | null; note: string; created_by: string | null; created_at: string },
         { family_id: string; member_id: string; delta: number; kind: string; note?: string },
