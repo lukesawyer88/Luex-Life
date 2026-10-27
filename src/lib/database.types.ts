@@ -336,6 +336,46 @@ export type Database = {
         { family_id: string; member_id: string; title: string; emoji?: string | null; per?: string; target?: number; unit?: string | null; stars?: number; buddy?: string | null; position?: number },
         { title?: string; emoji?: string | null; per?: string; target?: number; unit?: string | null; stars?: number; buddy?: string | null; position?: number; archived_at?: string | null }
       >;
+      hc_bin_changes: Table<
+        { bin_id: string; family_id: string; on_date: string; move_to: string | null; skip: boolean; who: string | null },
+        { bin_id: string; family_id: string; on_date: string; move_to?: string | null; skip?: boolean; who?: string | null },
+        { move_to?: string | null; skip?: boolean; who?: string | null }
+      >;
+      hc_bins: Table<
+        { id: string; family_id: string; name: string; colour: string; every_weeks: number; first_on: string; notes: string; people: string[]; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; name: string; colour?: string; every_weeks?: number; first_on: string; notes?: string; people?: string[] },
+        { name?: string; colour?: string; every_weeks?: number; first_on?: string; notes?: string; people?: string[]; archived_at?: string | null }
+      >;
+      hc_job_done: Table<
+        { id: string; job_id: string; family_id: string; done_on: string; note: string; done_by: string | null; created_at: string },
+        { id?: string; job_id: string; family_id: string; done_on: string; note?: string; done_by?: string | null; created_at?: string },
+        {  }
+      >;
+      hc_jobs: Table<
+        { id: string; family_id: string; title: string; emoji: string | null; every_months: number; next_due: string; notes: string; contact_id: string | null; who: string | null; last_done_on: string | null; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; title: string; emoji?: string | null; every_months?: number; next_due: string; notes?: string; contact_id?: string | null; who?: string | null },
+        { title?: string; emoji?: string | null; every_months?: number; next_due?: string; notes?: string; contact_id?: string | null; who?: string | null; archived_at?: string | null }
+      >;
+      hc_meters: Table<
+        { id: string; family_id: string; name: string; unit: string | null; archived_at: string | null },
+        { family_id: string; name: string; unit?: string | null },
+        { name?: string; unit?: string | null; archived_at?: string | null }
+      >;
+      hc_readings: Table<
+        { id: string; meter_id: string; family_id: string; value: number; read_on: string; photo_path: string | null; created_by: string | null; created_at: string; deleted_at: string | null },
+        { meter_id: string; family_id: string; value: number; read_on: string; photo_path?: string | null },
+        { value?: number; read_on?: string; photo_path?: string | null; deleted_at?: string | null }
+      >;
+      hc_repairs: Table<
+        { id: string; family_id: string; title: string; place: string | null; photo_path: string | null; notes: string; who: string | null; contact_id: string | null; done_at: string | null; done_by: string | null; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; title: string; place?: string | null; photo_path?: string | null; notes?: string; who?: string | null; contact_id?: string | null },
+        { title?: string; place?: string | null; photo_path?: string | null; notes?: string; who?: string | null; contact_id?: string | null; done_at?: string | null; deleted_at?: string | null }
+      >;
+      hc_sends: Table<
+        { ref_id: string; for_date: string; kind: string },
+        { ref_id: string; for_date: string; kind: string },
+        {  }
+      >;
       money_accounts: Table<
         { id: string; family_id: string; name: string; kind: string; currency: string; opening_balance: number; owner: string | null; private_to: string | null; position: number; created_by: string | null; created_at: string; archived_at: string | null },
         { family_id: string; name: string; kind?: string; currency?: string; opening_balance?: number; owner?: string | null; private_to?: string | null; position?: number },
@@ -613,6 +653,7 @@ export type Database = {
       doc_remove: { Args: { p_doc: string }; Returns: undefined };
       em_create_share: { Args: { p_name: string; p_days: number }; Returns: string };
       em_shared: { Args: { p_token: string }; Returns: Json };
+      hc_job_tick: { Args: { p_job: string; p_done_on: string; p_note: string }; Returns: string };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
