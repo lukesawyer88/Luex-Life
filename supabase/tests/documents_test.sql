@@ -217,6 +217,28 @@ begin
   perform pg_temp.chk(not exists (select 1 from public.documents where id = d1), 'a removed paper is deleted for good the next night');
 
   -- ===== other families and visitors
+  -- ===== tidying files nobody can reach
+  perform pg_temp.sys();
+  insert into storage.objects (bucket_id, name, created_at) values ('doc-files', fa || '/docs/s/' || gen_random_uuid() || '.jpg', now() - interval '2 days');
+  insert into storage.objects (bucket_id, name, created_at) values ('doc-files', fa || '/docs/s/' || gen_random_uuid() || '.jpg', now());
+  update storage.objects set created_at = now() - interval '2 days' where name in (gp, ap, sp);
+  perform pg_temp.chk((select count(*) from public.doc_unused_files(1000) u where u like fa || '/%') = 2,
+    'only day-old pages that belong to no paper are tidied: ' || (select count(*) from public.doc_unused_files(1000) u where u like fa || '/%'));
+  perform pg_temp.chk(not exists (select 1 from public.doc_unused_files(1000) u where u = gp), 'a page still on a paper is tidied');
+  update public.family_members set archived_at = now() - interval '10 days' where id = gran;
+  perform public.doc_tidy_departed();
+  perform pg_temp.chk(exists (select 1 from public.documents where id = d2), 'a grown-up''s own papers go within 30 days of leaving');
+  update public.family_members set archived_at = now() - interval '31 days' where id = gran;
+  perform public.doc_tidy_departed();
+  perform pg_temp.chk(not exists (select 1 from public.documents where id = d2), 'a grown-up''s own papers stay long after they left');
+  perform pg_temp.chk(exists (select 1 from public.doc_unused_files(1000) u where u = gp), 'their pages are then tidied');
+  update public.family_members set archived_at = null where id = gran;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  begin
+    perform public.doc_unused_files(10);
+    perform pg_temp.chk(false, 'a signed-in person listed unused files');
+  exception when others then perform pg_temp.chk(true, ''); end;
+
   perform pg_temp.act(ub, 'ben@test.dev');
   perform pg_temp.chk(not exists (select 1 from public.documents where family_id = fa), 'another family sees our papers');
   perform pg_temp.chk(not exists (select 1 from public.doc_folders where family_id = fa), 'another family sees our folders');

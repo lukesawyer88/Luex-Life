@@ -210,6 +210,11 @@ function DocDetail({ d, offline, onEdit, onGone }: { d: Doc; offline: boolean; o
         ) : null}
         {canChange ? <Button variant="ghost" data-testid="doc-remove" className="h-12 rounded-full text-[var(--status-red)]" disabled={busy} onClick={() => void remove()}><Trash2 className="size-4" /> Remove</Button> : null}
       </div>
+      {!offline || kept ? (
+        <p className="text-xs text-muted-foreground" data-testid="doc-keep-note">
+          {kept ? "Kept on this phone: anyone using it can open this paper until you sign out." : "Kept papers open without a signal. Anyone using this phone can open them until you sign out."}
+        </p>
+      ) : null}
     </div>
   );
 }

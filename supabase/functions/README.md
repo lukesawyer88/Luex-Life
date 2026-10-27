@@ -1,6 +1,6 @@
 # Luex Life server functions
 
-Three Supabase Edge Functions (Deno). Both run with the full-access (service) key, so each one checks who may see what itself.
+Supabase Edge Functions (Deno). Both run with the full-access (service) key, so each one checks who may see what itself.
 
 ## push-sender
 Runs every minute from the database schedule (`luex-push`). Each run it:
@@ -20,6 +20,9 @@ Safety: the function only fetches https links. It refuses private, internal and 
 
 ## album-share
 Shows one Family Board album to relatives without a login. The app calls `supabase.functions.invoke("album-share", { body: { token } })` from the public page `/a/<token>`. The database checks the token (`public.shared_album`: unrevoked, unexpired, album not archived) and lists the album's photos; the function then signs each file address for one hour. Only album photos are ever shown (never chat or memory photos). Tokens are never logged. Deploy with `verify_jwt` off (visitors have no login).
+
+## file-tidy
+Runs nightly from the database schedule (`luex-file-tidy`, 04:11 UTC) and only from it (`x-cron-secret`). Deletes Documents and Papers pages that belong to no paper and are at least a day old: a save cut off half-way, a removed paper, or the "just mine" papers of a grown-up who left over 30 days ago (the database removes those rows first, in `luex-docs-tidy`). The database picks the files (`public.doc_unused_files`, service only); the function only deletes them through the storage service, because the database can't delete stored files itself. File names are never logged. Deploy with `verify_jwt` off.
 
 ## Secrets (set on both functions)
 | Name | What |
