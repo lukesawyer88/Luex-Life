@@ -61,11 +61,20 @@ alter table public.notifications add constraint notifications_kind_check check (
   ('changes', 'reminder', 'leave', 'wishlist', 'weekly', 'chore',
    'message', 'mention', 'announcement', 'location', 'prompt', 'goal', 'kudos', 'memory', 'food', 'money', 'reward', 'school', 'docs', 'emergency', 'home', 'trip'));
 
+-- a trip or hosting plan shows only while its Calendar event is still there, still that type, and I can see it
+create or replace function public.module_event_ok(ev uuid, kind text)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.cal_events e where e.id = ev and e.type = kind and e.deleted_at is null)
+    and public.can_see_event(ev)
+$$;
+revoke all on function public.module_event_ok(uuid, text) from public, anon;
+grant execute on function public.module_event_ok(uuid, text) to authenticated;
+
 -- who can see a trip: anyone in the household who can see its Calendar event
 create or replace function public.trip_visible(t uuid)
 returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.trips x where x.id = t and x.family_id = public.my_family_id()
-    and public.is_family_member(x.family_id) and public.can_see_event(x.event_id))
+    and public.is_family_member(x.family_id) and public.module_event_ok(x.event_id, 'trip'))
 $$;
 revoke all on function public.trip_visible(uuid) from public, anon;
 grant execute on function public.trip_visible(uuid) to authenticated;
@@ -76,11 +85,11 @@ alter table public.trip_ideas enable row level security;
 revoke all on public.trips, public.trip_items, public.trip_ideas from anon, authenticated;
 
 create policy trips_read on public.trips for select to authenticated
-  using (family_id = (select public.my_family_id()) and public.is_family_member(family_id) and public.can_see_event(event_id));
+  using (family_id = (select public.my_family_id()) and public.is_family_member(family_id) and public.module_event_ok(event_id, 'trip'));
 create policy trips_add on public.trips for insert to authenticated
   with check (family_id = (select public.my_family_id()) and public.is_family_adult(family_id));
 create policy trips_change on public.trips for update to authenticated
-  using (family_id = (select public.my_family_id()) and public.is_family_adult(family_id) and public.can_see_event(event_id))
+  using (family_id = (select public.my_family_id()) and public.is_family_adult(family_id) and public.module_event_ok(event_id, 'trip'))
   with check (family_id = (select public.my_family_id()) and public.is_family_adult(family_id));
 
 -- items: everyone who sees the trip reads; the guard decides who adds and ticks what

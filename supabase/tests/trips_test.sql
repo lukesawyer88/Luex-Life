@@ -25,7 +25,7 @@ declare
   ua uuid := gen_random_uuid(); up uuid := gen_random_uuid(); ug uuid := gen_random_uuid();
   uk uuid := gen_random_uuid(); ub uuid := gen_random_uuid();
   fa uuid; fb uuid; ann uuid; pat uuid; gran uuid; kid uuid; ben uuid;
-  e1 uuid; e2 uuid; ep uuid; eb uuid; t1 uuid; t2 uuid; tp uuid; i1 uuid; i2 uuid; ik uuid; idea uuid; tok text; n int; t text; tz text; today date;
+  e1 uuid; e2 uuid; ep uuid; eb uuid; t1 uuid; t2 uuid; tp uuid; i1 uuid; i2 uuid; ik uuid; idea uuid; ek uuid; et uuid; tt uuid; gone uuid; tok text; n int; t text; tz text; today date;
 begin
   insert into auth.users (id, email, aud, role) values
     (ua, 'ann@test.dev', 'authenticated', 'authenticated'), (up, 'pat@test.dev', 'authenticated', 'authenticated'),
@@ -146,6 +146,32 @@ begin
   update public.trip_ideas set done_at = '2000-01-01' where id = idea;
   perform pg_temp.chk((select done_at > now() - interval '1 minute' from public.trip_ideas where id = idea), 'a parent ticks off an idea (at the real time)');
 
+  -- ===== the event underneath (review fixes)
+  perform pg_temp.act(uk, 'kid@test.dev');
+  insert into public.cal_events (family_id, title, type, all_day, starts_at, ends_at) values (fa, 'My trip', 'trip', true, now() + interval '9 days', now() + interval '10 days') returning id into ek;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  begin
+    insert into public.trips (family_id, event_id) values (fa, ek);
+    perform pg_temp.chk(false, 'a trip was put on a child''s own event (they could change or remove it)');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  insert into public.cal_events (family_id, title, type, all_day, starts_at, ends_at) values (fa, 'Day out', 'trip', true, (today + 1)::timestamp at time zone tz, (today + 1)::timestamp at time zone tz) returning id into et;
+  insert into public.trips (family_id, event_id) values (fa, et) returning id into tt;
+  insert into public.trip_items (family_id, trip_id, kind, title) values (fa, tt, 'todo', 'Make sandwiches') returning id into gone;
+  update public.trip_items set deleted_at = now() where id = gone;
+  begin
+    update public.trip_items set deleted_at = null where id = gone;
+    perform pg_temp.chk(false, 'a removed item came back');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  insert into public.cal_events (family_id, title, type, all_day, starts_at, ends_at) values (fa, 'Cancelled', 'trip', true, now() + interval '40 days', now() + interval '41 days') returning id into ek;
+  insert into public.trips (family_id, event_id) values (fa, ek) returning id into tp;
+  update public.cal_events set deleted_at = now() where id = ek;
+  perform pg_temp.act(uk, 'kid@test.dev');
+  perform pg_temp.chk(not exists (select 1 from public.trips where id = tp), 'a trip whose Calendar event was removed still shows');
+  begin
+    insert into public.trip_items (family_id, trip_id, kind, member_id, title) values (fa, tp, 'pack', kid, 'Ghost');
+    perform pg_temp.chk(false, 'someone packed for a removed trip');
+  exception when others then perform pg_temp.chk(true, ''); end;
+
   -- ===== "two days to go"
   perform pg_temp.sys();
   if tz is null then
@@ -156,7 +182,8 @@ begin
     perform pg_temp.chk((select count(*) from public.notifications where kind = 'trip' and member_id = ann and title like 'Off to Spain%') = 1, 'whoever''s going hears two days before, once');
     perform pg_temp.chk(t like '1 thing still%', 'the message says what''s still to pack or do: ' || coalesce(t, ''));
     perform pg_temp.chk((select body from public.notifications where kind = 'trip' and member_id = kid and title like 'Off to Spain%') like '2 things%', 'a child hears what''s left for them (their packing and the jobs)');
-    perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'trip' and member_id = gran), 'someone not going hears about the trip');
+    perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'trip' and member_id = gran and title like 'Off to Spain%'), 'someone not going hears about the trip');
+    perform pg_temp.chk(exists (select 1 from public.notifications where kind = 'trip' and title like 'Off to Day out%'), 'a trip added the day before still gets its reminder');
   end if;
 
   -- ===== other families and visitors

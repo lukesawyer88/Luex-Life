@@ -13,7 +13,7 @@ import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { useDesktop } from "@/lib/use-desktop";
 import { cn } from "@/lib/utils";
-import { insertEvent, saveEventChanges } from "@/modules/calendar/data";
+import { EditClash, insertEvent, saveEventChanges, type CalEvent } from "@/modules/calendar/data";
 import { dayStart } from "@/modules/calendar/time";
 import { Chip, Empty, Field, Sheet } from "@/modules/calendar/ui";
 
@@ -127,7 +127,7 @@ function TripDetail({ t, onEdit }: { t: Trip; onEdit: () => void }) {
           </p>
           {going.length ? <div className="mt-1 flex flex-wrap gap-1">{going.map((m) => <MemberAvatar key={m.id} member={m} size="sm" className="ring-0 ring-offset-0" />)}</div> : null}
         </div>
-        {grownUp ? <Button variant="outline" data-testid="trip-change" className="h-10 rounded-full" onClick={onEdit}>Change</Button> : null}
+        {canChangeEvent(t.event, role, me.id) ? <Button variant="outline" data-testid="trip-change" className="h-10 rounded-full" onClick={onEdit}>Change</Button> : null}
       </div>
       {warnings.length ? (
         <div className="space-y-1 rounded-2xl bg-[var(--status-amber-soft)] p-3 text-sm" data-testid="passport-warning">
@@ -395,7 +395,7 @@ function TripForm({ existing, onClose, onSaved }: { existing: Trip | null; onClo
       };
       let id = existing?.id;
       if (existing) {
-        await saveEventChanges(existing.event, fields, true);
+        await saveEventChanges(existing.event, fields);
         const { error } = await supabase.from("trips").update({ emoji }).eq("id", existing.id);
         if (error) throw error;
       } else {
@@ -412,7 +412,7 @@ function TripForm({ existing, onClose, onSaved }: { existing: Trip | null; onClo
       onClose();
       if (id) onSaved(id);
     } catch (e) {
-      toast.error(errMsg(e));
+      toast.error(e instanceof EditClash ? "Someone just changed this on the Calendar. Close this and open it again" : errMsg(e));
     } finally {
       setBusy(false);
     }
@@ -458,3 +458,7 @@ function TripForm({ existing, onClose, onSaved }: { existing: Trip | null; onClo
   );
 }
 
+/** The Calendar's own rule: a parent, or whoever added the event, changes it */
+function canChangeEvent(ev: CalEvent, role: string, me: string) {
+  return role === "parent" || ev.created_by_member === me;
+}

@@ -376,6 +376,21 @@ export type Database = {
         { ref_id: string; for_date: string; kind: string },
         {  }
       >;
+      host_events: Table<
+        { id: string; family_id: string; event_id: string; notes: string; reminded_on: string | null; created_by: string | null; created_at: string },
+        { family_id: string; event_id: string; notes?: string },
+        { notes?: string }
+      >;
+      host_guests: Table<
+        { id: string; family_id: string; host_id: string; name: string; people: number; status: string; dietary: string | null; notes: string; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; host_id: string; name: string; people?: number; status?: string; dietary?: string | null; notes?: string },
+        { name?: string; people?: number; status?: string; dietary?: string | null; notes?: string; deleted_at?: string | null }
+      >;
+      host_items: Table<
+        { id: string; family_id: string; host_id: string; kind: string; title: string; who: string | null; done_at: string | null; done_by: string | null; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; host_id: string; kind: string; title: string; who?: string | null },
+        { title?: string; who?: string | null; done_at?: string | null; deleted_at?: string | null }
+      >;
       money_accounts: Table<
         { id: string; family_id: string; name: string; kind: string; currency: string; opening_balance: number; owner: string | null; private_to: string | null; position: number; created_by: string | null; created_at: string; archived_at: string | null },
         { family_id: string; name: string; kind?: string; currency?: string; opening_balance?: number; owner?: string | null; private_to?: string | null; position?: number },

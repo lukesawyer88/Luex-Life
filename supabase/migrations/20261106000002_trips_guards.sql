@@ -11,9 +11,12 @@ begin
 
   if tg_table_name = 'trips' then
     if tg_op = 'INSERT' then
-      -- a trip sits on a Calendar trip event in this household that I can see
-      if not exists (select 1 from public.cal_events e where e.id = new.event_id and e.family_id = new.family_id
-                     and e.type = 'trip' and e.deleted_at is null) or not public.can_see_event(new.event_id) then
+      -- a trip sits on a Calendar trip event in this household that I can see, added here (not imported) by a grown-up,
+      -- so a child can't later change or remove the trip by changing their own event
+      if not exists (select 1 from public.cal_events e join public.family_members m on m.id = e.created_by_member
+                     where e.id = new.event_id and e.family_id = new.family_id and e.type = 'trip' and e.deleted_at is null
+                       and e.source = 'manual' and m.role in ('parent', 'member'))
+         or not public.can_see_event(new.event_id) then
         raise exception 'That change is not allowed';
       end if;
       new.created_by := me; new.created_at := now(); new.reminded_on := null;
@@ -21,6 +24,8 @@ begin
 
   elsif tg_table_name = 'trip_items' then
     if not exists (select 1 from public.trips where id = new.trip_id and family_id = new.family_id) then raise exception 'That change is not allowed'; end if;
+    -- removed stays removed
+    if tg_op = 'UPDATE' and old.deleted_at is not null then raise exception 'That change is not allowed'; end if;
     if tg_op = 'UPDATE' and (new.trip_id <> old.trip_id or new.kind <> old.kind or new.created_by is distinct from old.created_by) then
       raise exception 'That change is not allowed';
     end if;
@@ -41,6 +46,7 @@ begin
     end if;
 
   elsif tg_table_name = 'trip_ideas' then
+    if tg_op = 'UPDATE' and old.deleted_at is not null then raise exception 'That change is not allowed'; end if;
     if tg_op = 'INSERT' then new.created_by := me; new.created_at := now(); new.deleted_at := null; new.done_at := null;
     else
       if new.created_by is distinct from old.created_by then raise exception 'That change is not allowed'; end if;
@@ -58,7 +64,8 @@ create trigger trips_stamp before insert or update on public.trips for each row 
 create trigger trip_items_stamp before insert or update on public.trip_items for each row execute function public.stamp_trip_row();
 create trigger trip_ideas_stamp before insert or update on public.trip_ideas for each row execute function public.stamp_trip_row();
 
--- ---------------------------------------------------------------- "two days to go" (from 6pm family time, once per start date)
+-- ---------------------------------------------------------------- "two days to go" (from 6pm family time, once per start date;
+-- a trip added the day before still gets it)
 -- To whoever's going (who can see the trip), or every grown-up when nobody is picked.
 
 create or replace function public.queue_trip_reminders()
@@ -71,7 +78,7 @@ begin
     for t in
       select x.id, e.id as event_id, e.title, e.people, (e.starts_at at time zone f.tz)::date as starts
       from public.trips x join public.cal_events e on e.id = x.event_id
-      where x.family_id = f.id and e.deleted_at is null and (e.starts_at at time zone f.tz)::date = today + 2
+      where x.family_id = f.id and e.deleted_at is null and e.type = 'trip' and (e.starts_at at time zone f.tz)::date between today + 1 and today + 2
         and x.reminded_on is distinct from (e.starts_at at time zone f.tz)::date
     loop
       update public.trips set reminded_on = t.starts where id = t.id;
