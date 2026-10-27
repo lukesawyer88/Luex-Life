@@ -57,7 +57,7 @@ export type Database = {
         { album_id?: string | null; caption?: string; people?: string[]; taken_at?: string | null; deleted_at?: string | null }
       >;
       board_memories: Table<
-        { id: string; family_id: string; author: string | null; kind: string; title: string; body: string; happened_on: string; people: string[]; milestone_for: string | null; prompt_id: string | null; prompt_text: string | null; audience: string; created_at: string; updated_at: string; deleted_at: string | null },
+        { id: string; family_id: string; author: string | null; kind: string; title: string; body: string; happened_on: string; people: string[]; milestone_for: string | null; prompt_id: string | null; prompt_text: string | null; audience: string; created_at: string; updated_at: string; deleted_at: string | null; parents_may_see: boolean },
         { family_id: string; kind?: string; title?: string; body?: string; happened_on?: string; people?: string[]; milestone_for?: string | null; prompt_id?: string | null; audience?: string },
         { title?: string; body?: string; happened_on?: string; people?: string[]; audience?: string; deleted_at?: string | null }
       >;

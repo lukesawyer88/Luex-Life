@@ -25,7 +25,7 @@ declare
   ua uuid := gen_random_uuid(); up uuid := gen_random_uuid(); ug uuid := gen_random_uuid();
   uk uuid := gen_random_uuid(); ut uuid := gen_random_uuid(); ub uuid := gen_random_uuid();
   fa uuid; fb uuid; ann uuid; pat uuid; gran uuid; kid uuid; teen uuid; tom uuid; ben uuid;
-  fam uuid; famb uuid; dkg uuid; dtg uuid; dag uuid; grp uuid; m1 uuid; m2 uuid; mk uuid; ma uuid; poll uuid;
+  g2 uuid; dkt uuid; old_msg uuid; x uuid; fam uuid; famb uuid; dkg uuid; dtg uuid; dag uuid; grp uuid; m1 uuid; m2 uuid; mk uuid; ma uuid; poll uuid;
   o1 uuid; o2 uuid; req uuid; loc uuid; li uuid; it uuid; nt uuid; gl uuid; st uuid; al uuid; mem uuid; mem2 uuid;
   tok text; n int; t text; ok boolean; j jsonb; ts timestamptz;
 begin
@@ -569,6 +569,87 @@ begin
   begin
     select count(*) into n from public.board_messages;
     perform pg_temp.chk(n = 0, 'a signed-out visitor reads messages');
+  exception when others then perform pg_temp.chk(true, ''); end;
+
+  -- ===== fixes from the security review
+  perform pg_temp.act(ua, 'ann@test.dev');
+  begin
+    update public.family_members set role = 'child' where id = gran;
+    perform pg_temp.chk(false, 'a parent turned a grown-up into a child (and could read their chats)');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    update public.board_settings set alerts = 'off' where member_id = gran;
+    perform pg_temp.chk(false, 'a parent changed another grown-up''s settings');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- a parent who only reads a child's group can't join, rename or close it
+  perform pg_temp.act(uk, 'kid@test.dev');
+  x := public.board_create_group('Kids', null, array[teen]);
+  perform pg_temp.act(ua, 'ann@test.dev');
+  begin
+    perform public.board_set_group_people(x, array[kid, teen, ann, gran]);
+    perform pg_temp.chk(false, 'a reading parent added themselves to a child''s group');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  update public.board_threads set title = 'Renamed' where id = x;
+  get diagnostics n = row_count; perform pg_temp.chk(n = 0, 'a reading parent renamed a child''s group');
+  -- adding a child doesn't open the chat's earlier messages to parents
+  perform pg_temp.act(ug, 'gran@test.dev');
+  g2 := public.board_create_group('Gran and Ann', null, array[ann]);
+  insert into public.board_messages (family_id, thread_id, body) values (fa, g2, 'Between us') returning id into old_msg;
+  perform pg_temp.sys();
+  update public.board_messages set created_at = now() - interval '1 day' where id = old_msg;
+  update public.board_thread_people set added_at = now() - interval '2 days' where thread_id = g2;
+  perform pg_temp.act(ug, 'gran@test.dev');
+  perform public.board_set_group_people(g2, array[gran, ann, kid]);
+  perform pg_temp.act(up, 'pat@test.dev');
+  perform pg_temp.chk(not exists (select 1 from public.board_messages where id = old_msg), 'adding a child opened earlier grown-up messages to parents');
+  perform pg_temp.act(ug, 'gran@test.dev');
+  insert into public.board_messages (family_id, thread_id, body) values (fa, g2, 'Hello Mia');
+  perform pg_temp.act(up, 'pat@test.dev');
+  perform pg_temp.chk(exists (select 1 from public.board_messages where thread_id = g2 and body = 'Hello Mia'), 'parents read messages after the child joined');
+  -- a removed shared place goes with its message
+  perform pg_temp.act(uk, 'kid@test.dev');
+  dkt := public.board_open_direct(teen);
+  perform pg_temp.act(ut, 'teen@test.dev');
+  loc := public.board_share_location(dkt, null, 52.0, -1.0, 15, null);
+  update public.board_messages set deleted_at = now() where id = loc;
+  perform pg_temp.act(uk, 'kid@test.dev');
+  perform pg_temp.chk(not exists (select 1 from public.board_locations where message_id = loc), 'a removed shared place can still be read');
+  -- re-opening a journal doesn't reveal entries written while it was closed
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.board_settings set journal_parents_see = true where member_id = teen;
+  perform pg_temp.chk(not exists (select 1 from public.board_memories where id = mem2), 're-opening a journal revealed entries written while closed');
+  -- a parent can remove but not rewrite a child's private entry
+  select id into x from public.board_memories where author = kid and audience = 'private' limit 1;
+  begin
+    update public.board_memories set body = 'changed' where id = x;
+    perform pg_temp.chk(false, 'a parent rewrote a child''s private journal');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- a removed message's waiting alert goes too
+  insert into public.board_messages (family_id, thread_id, body) values (fa, fam, 'Oops wrong chat') returning id into x;
+  update public.board_messages set deleted_at = now() where id = x;
+  perform pg_temp.sys();
+  perform pg_temp.chk(not exists (select 1 from public.notifications where pushed_at is null and body like '%Oops wrong chat%'), 'a removed message is still waiting to be pushed');
+  -- no taking a vote back after a poll closes
+  perform pg_temp.act(uk, 'kid@test.dev');
+  begin
+    delete from public.board_poll_votes where message_id = poll;
+    perform pg_temp.chk(false, 'a vote was taken back after the poll closed');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- switches apply to files too
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.board_settings set photos = false, voice = false where member_id = kid;
+  perform pg_temp.act(uk, 'kid@test.dev');
+  perform pg_temp.chk(not public.board_file_ok(fa || '/board/t/' || fam || '/kid.jpg', true), 'a child with photos off uploaded a file');
+  perform pg_temp.chk(not public.board_file_ok(fa || '/board/a/kid.jpg', true), 'a child with photos off uploaded to the album');
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.board_settings set photos = true, voice = true where member_id = kid;
+  -- only the uploader records a file
+  perform pg_temp.sys();
+  insert into storage.objects (bucket_id, name, owner, metadata) values ('board-media', fa || '/board/a/anns.jpg', ua, '{"size": 10}');
+  perform pg_temp.act(ug, 'gran@test.dev');
+  begin
+    insert into public.board_media (family_id, path, kind, mime) values (fa, fa || '/board/a/anns.jpg', 'photo', 'image/jpeg');
+    perform pg_temp.chk(false, 'someone claimed another person''s upload');
   exception when others then perform pg_temp.chk(true, ''); end;
 
   -- tidy-up

@@ -98,3 +98,10 @@ Agreed 27 Oct 2026. Module 3 of 15. Research: FamilyWall, Cozi, FamilyGoal, Tiny
 2. iPhone videos (HEVC .mov) won't play in some Windows browsers: keep the original and show "Download to watch"; conversion is on the to-do list (needs a paid service).
 3. Notification volume: grouping, mute and quiet hours are must-haves, not extras.
 4. Children's chat is a safeguarding area: ask the same adviser as for Kids' Space.
+
+## Build status (27 Oct 2026)
+Built and tested on a local copy; not yet live (waiting for the owner's yes to apply the database changes and switch on the album-link service).
+
+Checks: 153 Board database security checks (plus the 158 Calendar ones still passing), 63 one-screen checks (parent, child, grandparent at phone, tablet and laptop size), 21 journey tests (sending, polls, reading a child's chat, lists, photo upload, album link, goals, settings), and the 20 Calendar journeys still passing. An independent security review found 11 problems inside a family (none across families); all fixed and tested.
+
+Known limits (on the to-do list): 50 MB per upload on Supabase's free plan; removed photos still use space until a clean-up job is added; HEVC videos need "Download to watch" on some Windows browsers; only typed messages wait for a signal (photos and voice notes need one); printed year books need a print partner.
