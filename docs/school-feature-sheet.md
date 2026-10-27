@@ -44,3 +44,8 @@ Agreed 27 Oct 2026. Module 7 of 15 (everyone). Research: ParentMail, Arbor, Clas
 ## Honest risks
 1. Nothing comes in automatically: things are typed in or photographed ("forward an email" waits on the Luex email domain).
 2. Teenagers may prefer their school's own homework app.
+
+## Build status (27 Oct 2026)
+Built and tested on a copy; not live yet (waiting for the owner's yes). The page is kept out of the menu until the database is live.
+
+Checks: 29 School database checks (every other module's checks still passing), 81 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 17 journey tests (setting up a school, the week, a club onto the Calendar, trip money, Today, the Home card, a grandparent changing a pickup and the new person being told, a child's homework). An independent security review found 4 problems (a private Calendar event could appear in the morning summary; editing a pickup note re-sent messages; a child could be put on the school run; removing a letter photo blocked ticking the task); all fixed and tested.
