@@ -43,6 +43,10 @@ begin
          or not public.members_in_family(new.family_id, array_remove(array[new.member_id, new.drop_by, new.pick_by], null)) then
         raise exception 'Pick people in this household';
       end if;
+      -- only grown-ups do the school run
+      if coalesce(public.school_role(new.drop_by), 'parent') = 'child' or coalesce(public.school_role(new.pick_by), 'parent') = 'child' then
+        raise exception 'Pick a grown-up for the school run';
+      end if;
       if tg_table_name = 'school_run_changes' then
         if tg_op = 'INSERT' then new.created_by := me; new.created_at := now(); end if;
         if new.on_date < public.family_today(new.family_id) - 1 or new.on_date > public.family_today(new.family_id) + 366 then
@@ -53,6 +57,8 @@ begin
     when 'school_activities' then
       select * into e from public.cal_events where id = new.event_id;
       if not found or e.family_id <> new.family_id or e.deleted_at is not null then raise exception 'That change is not allowed'; end if;
+      -- clubs are for everyone to see: never a private event (it would show in everyone's morning summary)
+      if e.visibility <> 'all' or not public.can_see_event(new.event_id) then raise exception 'Only events everyone can see can be a club'; end if;
       if not public.members_in_family(new.family_id, array[new.member_id]) then raise exception 'Pick someone in this household'; end if;
       if new.place_id is not null and not exists (select 1 from public.school_places where id = new.place_id and family_id = new.family_id) then
         raise exception 'That change is not allowed';
@@ -65,7 +71,9 @@ begin
       if new.member_id is not null and not public.members_in_family(new.family_id, array[new.member_id]) then
         raise exception 'Pick someone in this household';
       end if;
-      if not public.school_photo_ok(new.family_id, new.photo_path) then raise exception 'Add the photo again'; end if;
+      if (tg_op = 'INSERT' or new.photo_path is distinct from old.photo_path) and not public.school_photo_ok(new.family_id, new.photo_path) then
+        raise exception 'Add the photo again';
+      end if;
       if tg_op = 'INSERT' then
         new.created_by := me; new.created_at := now(); new.done_at := null; new.done_by := null; new.deleted_at := null;
         -- children add their own homework only
@@ -112,13 +120,18 @@ create or replace function public.after_school_run_change()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare me uuid := public.my_member_id(); child text; day_name text; v uuid;
 begin
+  -- only when who's doing it (or the time) changed, and only to the people newly named
+  if tg_op = 'UPDATE' and (new.drop_by, new.pick_by, new.pick_time) is not distinct from (old.drop_by, old.pick_by, old.pick_time) then
+    return null;
+  end if;
   select display_name into child from public.family_members where id = new.member_id;
   day_name := case when new.on_date = public.family_today(new.family_id) then 'today' else to_char(new.on_date, 'FMDay FMDD FMMonth') end;
-  for v in select distinct x from unnest(array[new.drop_by, new.pick_by]) x where x is not null and x is distinct from me loop
+  for v in select distinct x from unnest(array[new.drop_by, new.pick_by]) x where x is not null and x is distinct from me
+             and (tg_op = 'INSERT' or x is distinct from old.drop_by and x is distinct from old.pick_by or new.pick_time is distinct from old.pick_time) loop
     perform public.notify(v, 'school', 'School run ' || day_name,
       concat_ws(' and ', case when new.drop_by = v then 'You''re taking ' || child end,
                          case when new.pick_by = v then 'You''re picking up ' || child || coalesce(' at ' || to_char(new.pick_time, 'HH24:MI'), '') end),
-      '/m/school', null, interval '0');
+      '/m/school', 'school-run:' || new.member_id || ':' || new.on_date, interval '2 minutes');
   end loop;
   return null;
 end $$;
@@ -149,7 +162,8 @@ begin
   if found and cardinality(d.bring) > 0 then parts := parts || array_to_string(d.bring, ', '); end if;
   if found and d.lunch = 'packed' then parts := parts || 'packed lunch'::text; end if;
   for a in select e.title, e.starts_at, sa.kit from public.school_activities sa join public.cal_events e on e.id = sa.event_id
-           where sa.member_id = c and e.deleted_at is null and e.recurrence_of is null
+           where sa.member_id = c and e.deleted_at is null and e.recurrence_of is null and e.visibility = 'all'
+             and not exists (select 1 from unnest(e.exdates) x where (x at time zone tz)::date = today)
              and ((e.rrule is null and (e.starts_at at time zone tz)::date = today)
                or (e.rrule ~ '^FREQ=WEEKLY' and e.rrule like '%' || code || '%' and (e.starts_at at time zone tz)::date <= today)
                or (e.rrule ~ '^FREQ=DAILY' and (e.starts_at at time zone tz)::date <= today))

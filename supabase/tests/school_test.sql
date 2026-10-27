@@ -96,6 +96,24 @@ begin
     perform pg_temp.chk(false, 'another family linked our event');
   exception when others then perform pg_temp.chk(true, ''); end;
 
+  -- review fixes
+  perform pg_temp.act(up, 'pat@test.dev');
+  insert into public.cal_events (family_id, title, type, starts_at, ends_at, people, visibility, viewers)
+    values (fa, 'Private thing', 'other', now(), now() + interval '1 hour', array[kid], 'selected', array[pat]) returning id into x;
+  begin
+    insert into public.school_activities (family_id, member_id, event_id) values (fa, kid, x);
+    perform pg_temp.chk(false, 'a private event was made a club');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.school_run_changes (family_id, member_id, on_date, pick_by) values (fa, kid, d + 5, kid);
+    perform pg_temp.chk(false, 'a child was put on the school run');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.act(ug, 'gran@test.dev');
+  update public.school_run_changes set note = 'edit 1' where member_id = kid and on_date = d + 1;
+  update public.school_run_changes set note = 'edit 2' where member_id = kid and on_date = d + 1;
+  perform pg_temp.sys();
+  perform pg_temp.chk((select count(*) from public.notifications where kind = 'school' and member_id = pat and body like '%picking up Kid%') = 1, 'editing a note sent more pickup messages');
+
   -- ===== things to do
   perform pg_temp.act(ug, 'gran@test.dev');
   insert into public.school_tasks (family_id, member_id, title, kind, due_on, amount) values (fa, kid, 'Trip money', 'money', d, 5) returning id into t1;
