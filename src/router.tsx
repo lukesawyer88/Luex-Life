@@ -33,7 +33,7 @@ const persister = createSyncStoragePersister({
   key: CACHE_KEY,
   throttleTime: 2000,
 });
-const KEEP_OFFLINE = new Set(["me", "family", "members", "modules", "cal"]);
+const KEEP_OFFLINE = new Set(["me", "family", "members", "modules", "cal", "rewards"]);
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });
 
@@ -129,7 +129,7 @@ export function App() {
       persistOptions={{
         persister,
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        buster: "life-1",
+        buster: "life-2",
         dehydrateOptions: { shouldDehydrateQuery: (q) => q.state.status === "success" && KEEP_OFFLINE.has(String(q.queryKey[0])) },
       }}
     >

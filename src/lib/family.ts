@@ -73,18 +73,22 @@ export function useInvites(familyId: string | undefined, enabled: boolean) {
   });
 }
 
+// kept on the device as a plain list (a Set doesn't survive being saved), turned back into a Set when read
+const toSet = (a: string[]) => new Set(a);
+
 /** Module keys this family has switched off */
 export function useSwitchedOff(familyId: string | undefined) {
   return useQuery({
     queryKey: ["modules", familyId],
     enabled: !!familyId,
+    select: toSet,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("family_modules")
         .select("module_key, enabled")
         .eq("family_id", familyId!);
       if (error) throw error;
-      return new Set((data ?? []).filter((r) => !r.enabled).map((r) => r.module_key));
+      return (data ?? []).filter((r) => !r.enabled).map((r) => r.module_key);
     },
   });
 }

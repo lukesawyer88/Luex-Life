@@ -87,17 +87,20 @@ export function useRewardSettings() {
   });
 }
 
+// kept on the device as plain lists (Maps don't survive being saved for offline use), turned into Maps when read
+const balanceMap = (list: Balance[]) => new Map(list.map((b) => [b.member_id, b]));
+const personMap = (list: RewardPerson[]) => new Map(list.map((p) => [p.member_id, p]));
+
 /** Stars and pots for me, and for the children when I'm a parent */
 export function useBalances() {
   const { family } = useFamilyState();
   return useQuery({
     queryKey: rewardKey(family.id, "balances"),
+    select: balanceMap,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("reward_balances");
       if (error) throw error;
-      const out = new Map<string, Balance>();
-      for (const b of (data ?? []) as Balance[]) out.set(b.member_id, { ...b, spend: Number(b.spend), save: Number(b.save), give: Number(b.give) });
-      return out;
+      return ((data ?? []) as Balance[]).map((b) => ({ ...b, spend: Number(b.spend), save: Number(b.save), give: Number(b.give) }));
     },
   });
 }
@@ -106,10 +109,8 @@ export function usePeopleSettings() {
   const { family } = useFamilyState();
   return useQuery({
     queryKey: rewardKey(family.id, "people"),
-    queryFn: async () => {
-      const list = await rows<RewardPerson>(supabase.from("reward_people").select("*").eq("family_id", family.id));
-      return new Map(list.map((p) => [p.member_id, p]));
-    },
+    select: personMap,
+    queryFn: () => rows<RewardPerson>(supabase.from("reward_people").select("*").eq("family_id", family.id)),
   });
 }
 

@@ -195,11 +195,15 @@ export function useChoreDone(fromKey: string, toKey: string) {
   });
 }
 
-/** Stars earned (confirmed) since a day, per person – shown here, spent in Pocket Money and Rewards */
+// saved on the device as pairs (a Map doesn't survive being saved), turned back into a Map when read
+const toStarMap = (a: [string, number][]) => new Map(a);
+
+/** Stars earned (confirmed) since a day, per person – shown here, spent in Rewards and Pocket Money */
 export function useStars(sinceKey: string) {
   const { family } = useFamilyState();
   return useQuery({
     queryKey: calKey(family.id, "stars", sinceKey),
+    select: toStarMap,
     queryFn: async () => {
       const [done, runs, routines] = await Promise.all([
         rows<Pick<ChoreDone, "for_member" | "stars" | "confirmed_at">>(
@@ -217,7 +221,7 @@ export function useStars(sinceKey: string) {
         const m = owner.get(r.routine_id);
         if (m) total.set(m, (total.get(m) ?? 0) + r.stars);
       }
-      return total;
+      return [...total.entries()];
     },
   });
 }

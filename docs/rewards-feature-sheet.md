@@ -85,3 +85,16 @@ Agreed 27 Oct 2026. Module 6 of 15 (everyone). Research: NatWest Rooster Money, 
 2. Self-rewards rely on honesty.
 3. No card for children (a gap against GoHenry and Rooster).
 4. Parents must hand over or move the real money themselves.
+
+## Build status (27 Oct 2026)
+Built and tested on a copy; not live yet (waiting for the owner's yes).
+
+Checks: 92 Rewards database checks (Calendar 94, Board 153, Food 65, Money 58, access 51 and app calls 13 still passing), 84 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 20 Rewards journey tests (plus Calendar, Board, Food and Money journeys still passing), 7 streak unit tests. An independent security review found 11 problems (two requests at once could spend the same stars twice; a grown-up who isn't a parent could pay a child any amount through a job or award stars through Board goals; un-ticking after spending left balances below nothing; deductions possible while switched off; a child could make a parent's habit easier; small star swaps rounded up; parents could open other grown-ups' photos; made-up photo paths passed; parents saw shared rewards they weren't in); all fixed and tested. Grown-ups' own treat jars are their own record, so they can add any amount (intended).
+
+Also fixed while testing: the app saved the list of switched-off modules and the Calendar's star totals in a form that broke after a page reload without a signal; both now save safely, and Rewards balances can be read without a signal.
+
+Known limits:
+1. Only goals marked done by a parent pay stars.
+2. Proof photos are removed by the checker's phone after confirming; if that phone loses its signal at that moment the photo stays in storage.
+3. The weekly bonus only counts daily chores and weekly chores on set days, done by each person (not rotating or "anyone" chores).
+4. A savings goal's progress is the child's whole save pot, so several goals show the same amount saved.

@@ -76,10 +76,15 @@ begin
     insert into public.chore_done (family_id, chore_id, due_on, for_member, photo_path) values (fa, ch, d, kid, fa || '/rewards/' || ann || '/x.jpg');
     perform pg_temp.chk(false, 'a photo from someone else''s folder was used');
   exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.chore_done (family_id, chore_id, due_on, for_member, photo_path) values (fa, ch, d, kid, fa || '/rewards/' || kid || '/made-up.jpg');
+    perform pg_temp.chk(false, 'a photo chore was ticked with a photo that doesn''t exist');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  insert into storage.objects (bucket_id, name, owner) values ('reward-files', fa || '/rewards/' || kid || '/p.jpg', uk);
   insert into public.chore_done (family_id, chore_id, due_on, for_member, photo_path) values (fa, ch, d, kid, fa || '/rewards/' || kid || '/p.jpg') returning id into cd;
   perform pg_temp.act(ua, 'ann@test.dev');
   update public.chore_done set confirmed_at = now() where id = cd;
-  perform pg_temp.chk((select photo_path is null from public.chore_done where id = cd), 'the photo is let go once confirmed');
+  perform pg_temp.chk(public.reward_file_ok(fa || '/rewards/' || kid || '/p.jpg', false), 'the checking parent opens the chore photo');
   perform pg_temp.chk(pg_temp.st(kid) = 3, 'stars after confirming a photo chore');
 
   -- Board goals
@@ -89,6 +94,11 @@ begin
   update public.board_goals set done_at = null where id = g;
   perform pg_temp.chk(pg_temp.st(kid) = 3, 're-opening a goal takes its stars back');
   update public.board_goals set done_at = now() where id = g;
+  perform pg_temp.act(ug, 'gran@test.dev');
+  insert into public.board_goals (family_id, title, people, stars) values (fa, 'Gran''s goal', array[kid, gran], 100) returning id into x;
+  update public.board_goals set done_at = now() where id = x;
+  perform pg_temp.chk(pg_temp.st(kid) = 8 and pg_temp.st(gran) = 0, 'a goal marked done by someone who isn''t a parent paid stars');
+  perform pg_temp.act(ua, 'ann@test.dev');
 
   -- ===== habits
   insert into public.habits (family_id, member_id, title, target, unit, stars, buddy) values (fa, ann, 'Water', 8, 'glasses', 2, pat) returning id into hb;
@@ -290,6 +300,7 @@ begin
     update public.reward_jobs set done_at = now() where id = jb;
     perform pg_temp.chk(false, 'a photo job was done without a photo');
   exception when others then perform pg_temp.chk(true, ''); end;
+  insert into storage.objects (bucket_id, name, owner) values ('reward-files', fa || '/rewards/' || kid || '/car.jpg', uk);
   update public.reward_jobs set done_at = now(), photo_path = fa || '/rewards/' || kid || '/car.jpg' where id = jb;
   begin
     update public.reward_jobs set confirmed_at = now() where id = jb;
@@ -297,10 +308,71 @@ begin
   exception when others then perform pg_temp.chk(true, ''); end;
   perform pg_temp.act(up, 'pat@test.dev');
   perform pg_temp.chk(public.reward_file_ok(fa || '/rewards/' || kid || '/car.jpg', false), 'the person who set the job sees its photo');
+  begin
+    update public.reward_jobs set money = 9999 where id = jb;
+    perform pg_temp.chk(false, 'a job''s pay was changed after someone took it on');
+  exception when others then perform pg_temp.chk(true, ''); end;
   update public.reward_jobs set confirmed_at = now() where id = jb;
   perform pg_temp.act(ua, 'ann@test.dev');
   perform pg_temp.chk(pg_temp.st(kid) = 2 and pg_temp.pb(kid, 'spend') = 13, 'a confirmed job pays');
-  perform pg_temp.chk((select photo_path is null from public.reward_jobs where id = jb), 'a job photo is let go once confirmed');
+  -- a grown-up who isn't a parent can't pay a child without a parent
+  perform pg_temp.act(ug, 'gran@test.dev');
+  insert into public.reward_jobs (family_id, title, money) values (fa, 'Help Gran', 1) returning id into x;
+  perform pg_temp.act(uk, 'kid@test.dev');
+  update public.reward_jobs set claimed_by = kid where id = x;
+  update public.reward_jobs set done_at = now() where id = x;
+  perform pg_temp.act(ug, 'gran@test.dev');
+  begin
+    update public.reward_jobs set confirmed_at = now() where id = x;
+    perform pg_temp.chk(false, 'a grown-up who isn''t a parent paid a child for a job');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.chk(not public.reward_file_ok(fa || '/rewards/' || ann || '/x.jpg', false), 'a grown-up opens another grown-up''s photo');
+  perform pg_temp.act(up, 'pat@test.dev');
+  perform pg_temp.chk(not public.reward_file_ok(fa || '/rewards/' || ann || '/x.jpg', false), 'a parent opens another grown-up''s photo');
+  perform pg_temp.act(ua, 'ann@test.dev');
+  -- money and stars can't go below nothing
+  begin
+    insert into public.pocket_entries (family_id, member_id, amount, kind) values (fa, kid, -50, 'other');
+    perform pg_temp.chk(false, 'money was taken off as "other"');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.pocket_entries (family_id, member_id, amount, kind) values (fa, kid, 500, 'deduction');
+    perform pg_temp.chk(false, 'a deduction took a child below nothing');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.star_entries (family_id, member_id, delta, kind) values (fa, kid, -500, 'deduction');
+    perform pg_temp.chk(false, 'a star deduction took a child below nothing');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- swapping only pays whole pennies the stars cover
+  update public.reward_settings set stars_per_pound = 1000 where family_id = fa;
+  insert into public.star_entries (family_id, member_id, delta, kind) values (fa, kid, 5, 'bonus');
+  begin
+    perform public.reward_swap(kid, 5);
+    perform pg_temp.chk(false, 'a few stars were swapped for more than they''re worth');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- a child can't change how a grown-up's habit pays
+  insert into public.habits (family_id, member_id, title, per, target, stars) values (fa, kid, 'Piano', 'week', 3, 20) returning id into x;
+  perform pg_temp.act(uk, 'kid@test.dev');
+  update public.habits set per = 'day', target = 1 where id = x;
+  perform pg_temp.chk((select per = 'week' and target = 3 from public.habits where id = x), 'a child made a parent''s habit easier');
+  -- a shared reward is private to the people in it
+  perform pg_temp.act(ug, 'gran@test.dev');
+  insert into public.rewards (family_id, kind, people, title, stars) values (fa, 'shared', array[gran], 'Gran''s treat', 5) returning id into x;
+  perform pg_temp.act(up, 'pat@test.dev');
+  perform pg_temp.chk(not exists (select 1 from public.rewards where id = x), 'a parent sees a shared reward they''re not in');
+  -- taking earnings back never leaves money owed
+  perform pg_temp.act(ua, 'ann@test.dev');
+  insert into public.chores (family_id, title, people, stars, money) values (fa, 'Feed the cat', array[kid], 0, 20) returning id into x;
+  perform pg_temp.act(uk, 'kid@test.dev');
+  insert into public.chore_done (family_id, chore_id, due_on, for_member) values (fa, x, d, kid) returning id into cd;
+  perform public.reward_move(kid, 'spend', 'save', pg_temp.pb(kid, 'spend'));
+  begin
+    delete from public.chore_done where id = cd;
+    perform pg_temp.chk(false, 'a chore was un-ticked after its money was saved');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  delete from public.chores where id = x;
+  perform pg_temp.chk(pg_temp.pb(kid, 'save') >= 20, 'removing a chore keeps what it already paid');
 
   -- ===== files
   perform pg_temp.act(uk, 'kid@test.dev');

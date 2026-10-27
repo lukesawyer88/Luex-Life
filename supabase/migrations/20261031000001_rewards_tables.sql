@@ -244,7 +244,6 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select r.family_id = public.my_family_id() and case r.kind
     when 'me' then public.reward_sees(r.family_id, r.owner)
     when 'shared' then cardinality(r.people) = 0 or public.my_member_id() = any(r.people) or r.created_by = public.my_member_id()
-      or public.is_family_parent(r.family_id)
     else true end
 $$;
 create or replace function public.reward_sees_reward_id(rid uuid)

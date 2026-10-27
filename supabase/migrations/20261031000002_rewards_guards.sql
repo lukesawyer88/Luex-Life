@@ -57,7 +57,17 @@ begin
 end $$;
 create or replace function public.reward_remove(key_like text)
 returns void language plpgsql security definer set search_path = '' as $$
+declare r record;
 begin
+  -- taking earnings back must never leave someone owing stars or money they've already used
+  for r in select member_id, sum(delta) as d from public.star_entries where source_key like key_like group by member_id loop
+    perform 1 from public.family_members where id = r.member_id for update;
+    if public.reward_star_balance(r.member_id) - r.d < 0 then raise exception 'Those stars have already been spent, so this can''t be undone'; end if;
+  end loop;
+  for r in select member_id, pot, sum(amount) as a from public.pocket_entries where source_key like key_like and status = 'ok' group by member_id, pot loop
+    perform 1 from public.family_members where id = r.member_id for update;
+    if public.reward_pot_balance(r.member_id, r.pot) - r.a < 0 then raise exception 'That money has already been used, so this can''t be undone'; end if;
+  end loop;
   perform set_config('luex.rewardsys', 'on', true);
   delete from public.star_entries where source_key like key_like;
   delete from public.pocket_entries where source_key like key_like;
@@ -123,6 +133,8 @@ begin
         if not coalesce((select deductions_on from public.reward_settings where family_id = new.family_id), false) then
           raise exception 'Deductions are switched off';
         end if;
+        perform 1 from public.family_members where id = new.member_id for update;
+        if public.reward_star_balance(new.member_id) + new.delta < 0 then raise exception 'They don''t have that many stars'; end if;
       else raise exception 'That change is not allowed'; end if;
       new.created_by := me; new.created_at := now(); new.source_key := null;
 
@@ -134,7 +146,12 @@ begin
         new.created_by := me; new.created_at := now(); new.archived_at := null;
         if my_role = 'child' then new.stars := 0; end if;
       else
-        if my_role = 'child' then new.stars := old.stars; end if;
+        -- a child can't change how a habit pays, or put away one a grown-up set
+        if my_role = 'child' and (old.stars > 0 or old.created_by is distinct from me) then
+          new.stars := old.stars; new.per := old.per; new.target := old.target; new.archived_at := old.archived_at;
+        elsif my_role = 'child' then
+          new.stars := old.stars;
+        end if;
       end if;
 
     when 'habit_logs' then
@@ -171,6 +188,7 @@ begin
         raise exception 'That reward isn''t open';
       end if;
       if new.member_id <> me or not (cardinality(r.people) = 0 or me = any(r.people)) then raise exception 'That change is not allowed'; end if;
+      perform 1 from public.family_members where id = me for update;
       if public.reward_star_balance(me) < new.stars then raise exception 'You don''t have that many stars'; end if;
       new.created_at := now();
 
@@ -183,6 +201,7 @@ begin
         end if;
         if new.member_id <> me and not parent then raise exception 'That change is not allowed'; end if;
         new.stars := r.stars;
+        perform 1 from public.family_members where id = new.member_id for update;
         if public.reward_star_balance(new.member_id) < new.stars then raise exception 'Not enough stars yet'; end if;
         new.created_at := now();
         if parent or (my_role <> 'child' and new.member_id = me)
@@ -196,6 +215,7 @@ begin
            or new.reward_id <> old.reward_id or new.member_id <> old.member_id or new.stars <> old.stars then
           raise exception 'That change is not allowed';
         end if;
+        perform 1 from public.family_members where id = new.member_id for update;
         if new.status = 'approved' and public.reward_star_balance(new.member_id) < new.stars then raise exception 'Not enough stars yet'; end if;
         new.decided_by := me; new.decided_at := now();
       end if;
@@ -208,7 +228,7 @@ begin
         -- a phone's own key for something added without a signal (so a retry never saves it twice)
         if new.source_key is not null and new.source_key !~ '^device:[0-9a-f-]{36}$' then new.source_key := null; end if;
         -- the sign follows the kind
-        if new.kind in ('bonus', 'gift', 'tooth_fairy', 'birthday') and new.amount < 0 then raise exception 'That change is not allowed'; end if;
+        if new.kind in ('bonus', 'gift', 'tooth_fairy', 'birthday', 'other') and new.amount < 0 then raise exception 'That change is not allowed'; end if;
         if new.kind in ('deduction', 'spend', 'cash') and new.amount > 0 then new.amount := -new.amount; end if;
         if parent and target_role = 'child' then
           if new.kind not in ('bonus', 'deduction', 'spend', 'cash', 'gift', 'tooth_fairy', 'birthday', 'other') then raise exception 'That change is not allowed'; end if;
@@ -229,15 +249,18 @@ begin
         else
           raise exception 'That change is not allowed';
         end if;
-        if new.status = 'ok' and new.amount < 0 and public.reward_pot_balance(new.member_id, new.pot) + new.amount < 0
-           and target_role = 'child' and new.kind in ('spend', 'cash') then
-          raise exception 'There isn''t that much in that pot';
+        if new.amount < 0 then
+          perform 1 from public.family_members where id = new.member_id for update;
+          if new.status = 'ok' and public.reward_pot_balance(new.member_id, new.pot) + new.amount < 0 then
+            raise exception 'There isn''t that much in that pot';
+          end if;
         end if;
       else
         if not parent or old.status <> 'waiting' or new.status not in ('ok', 'declined')
            or new.member_id <> old.member_id or new.amount <> old.amount or new.pot <> old.pot or new.kind <> old.kind then
           raise exception 'That change is not allowed';
         end if;
+        perform 1 from public.family_members where id = new.member_id for update;
         if new.status = 'ok' and new.amount < 0 and public.reward_pot_balance(new.member_id, new.pot) + new.amount < 0 then
           raise exception 'There isn''t that much in that pot';
         end if;
@@ -263,12 +286,13 @@ begin
         -- confirming: the person who set it up (or a parent), never the person who did it
         if old.confirmed_at is not null or new.confirmed_at is null or old.done_at is null or old.claimed_by is null
            or me = old.claimed_by or not (me = old.created_by or parent)
+           or (public.reward_role(old.claimed_by) = 'child' and not parent and (old.money > 0 or old.stars > 0))
            or new.title <> old.title or new.money <> old.money or new.stars <> old.stars or new.people <> old.people
            or new.claimed_by is distinct from old.claimed_by or new.done_at is distinct from old.done_at
            or new.archived_at is distinct from old.archived_at then
           raise exception 'That change is not allowed';
         end if;
-        new.confirmed_by := me; new.confirmed_at := now(); new.photo_path := null;
+        new.confirmed_by := me; new.confirmed_at := now(); new.photo_path := old.photo_path;
       elsif new.claimed_by is distinct from old.claimed_by or new.done_at is distinct from old.done_at or new.photo_path is distinct from old.photo_path then
         if old.confirmed_at is not null or old.archived_at is not null
            or new.title <> old.title or new.money <> old.money or new.stars <> old.stars or new.people <> old.people
@@ -286,6 +310,9 @@ begin
           if new.photo_path is not null and new.photo_path not like new.family_id::text || '/rewards/' || me::text || '/%' then
             raise exception 'That change is not allowed';
           end if;
+          if new.photo_path is not null and not exists (select 1 from storage.objects o where o.bucket_id = 'reward-files' and o.name = new.photo_path) then
+            raise exception 'Add a photo first';
+          end if;
           if new.done_at is not null then
             if old.needs_photo and new.photo_path is null then raise exception 'Add a photo first'; end if;
             new.done_at := coalesce(old.done_at, now());
@@ -295,6 +322,9 @@ begin
         end if;
       else
         if not (me = old.created_by or parent) or old.confirmed_at is not null then raise exception 'That change is not allowed'; end if;
+        if old.claimed_by is not null and (new.money <> old.money or new.stars <> old.stars) then
+          raise exception 'Someone is already doing this, so the pay can''t change';
+        end if;
         if not public.members_in_family(new.family_id, new.people) then raise exception 'Those people are not in this family'; end if;
       end if;
 
@@ -336,7 +366,8 @@ returns trigger language plpgsql security definer set search_path = '' as $$
 declare c public.chores%rowtype;
 begin
   if tg_op = 'DELETE' then
-    perform public.reward_remove('chore:' || old.id::text);
+    -- a chore that's been removed keeps what it already earned
+    if exists (select 1 from public.chores where id = old.chore_id) then perform public.reward_remove('chore:' || old.id::text); end if;
     return null;
   end if;
   if new.confirmed_at is null then return null; end if;
@@ -356,8 +387,7 @@ returns trigger language plpgsql security definer set search_path = '' as $$
 declare c public.chores%rowtype;
 begin
   if tg_op = 'UPDATE' then
-    if new.confirmed_at is not null and old.confirmed_at is null then new.photo_path := null;
-    else new.photo_path := old.photo_path; end if;
+    new.photo_path := old.photo_path;
     return new;
   end if;
   if (select auth.uid()) is null then return new; end if;
@@ -365,8 +395,10 @@ begin
   if new.photo_path is not null and new.photo_path not like new.family_id::text || '/rewards/' || public.my_member_id()::text || '/%' then
     raise exception 'That change is not allowed';
   end if;
+  if new.photo_path is not null and not exists (select 1 from storage.objects o where o.bucket_id = 'reward-files' and o.name = new.photo_path) then
+    raise exception 'Add a photo first';
+  end if;
   if c.needs_photo and new.photo_path is null and not public.is_family_parent(new.family_id) then raise exception 'Add a photo first'; end if;
-  if new.confirmed_at is not null then new.photo_path := null; end if;
   return new;
 end $$;
 revoke all on function public.guard_chore_photo() from public, anon, authenticated;
@@ -377,7 +409,7 @@ returns trigger language plpgsql security definer set search_path = '' as $$
 declare rt public.routines%rowtype;
 begin
   if tg_op = 'DELETE' then
-    perform public.reward_remove('routine:' || old.id::text);
+    if exists (select 1 from public.routines where id = old.routine_id) then perform public.reward_remove('routine:' || old.id::text); end if;
     return null;
   end if;
   if new.finished_at is null or new.stars <= 0 then return null; end if;
@@ -392,7 +424,7 @@ create or replace function public.after_goal_reward()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare m uuid;
 begin
-  if new.done_at is not null and old.done_at is null and new.stars > 0 then
+  if new.done_at is not null and old.done_at is null and new.stars > 0 and public.reward_role(new.done_by) = 'parent' then
     for m in select id from public.family_members where family_id = new.family_id and archived_at is null
                and (cardinality(new.people) = 0 or id = any(new.people)) loop
       perform public.reward_add_stars(new.family_id, m, new.stars, 'goal', 'goal:' || new.id || ':' || m, new.title);
@@ -569,17 +601,19 @@ $$;
 -- swap stars for money at the household's rate
 create or replace function public.reward_swap(p_member uuid, p_stars integer)
 returns numeric language plpgsql security definer set search_path = '' as $$
-declare f uuid := public.my_family_id(); rate integer; amt numeric; k text := gen_random_uuid()::text;
+declare f uuid := public.my_family_id(); rate integer; amt numeric; used integer; k text := gen_random_uuid()::text;
 begin
   if not public.reward_sees(f, p_member) or p_stars is null or p_stars < 1 then raise exception 'That change is not allowed'; end if;
   select stars_per_pound into rate from public.reward_settings where family_id = f;
   if rate is null then raise exception 'Swapping stars is switched off'; end if;
   perform 1 from public.family_members where id = p_member for update;
   if public.reward_star_balance(p_member) < p_stars then raise exception 'Not enough stars'; end if;
-  amt := round(p_stars::numeric / rate, 2);
+  -- whole pennies only, and only the stars those pennies cost
+  amt := floor(p_stars * 100.0 / rate) / 100.0;
   if amt < 0.01 then raise exception 'That''s not enough stars to swap'; end if;
-  perform public.reward_add_stars(f, p_member, -p_stars, 'swap', 'swap:' || k, 'Swapped for money');
-  perform public.reward_add_money(f, p_member, 'spend', amt, 'swap', 'swap:' || k, p_stars || ' stars swapped', null);
+  used := ceil(amt * rate)::integer;
+  perform public.reward_add_stars(f, p_member, -used, 'swap', 'swap:' || k, 'Swapped for money');
+  perform public.reward_add_money(f, p_member, 'spend', amt, 'swap', 'swap:' || k, used || ' stars swapped', null);
   return amt;
 end $$;
 
@@ -811,8 +845,10 @@ begin
   if p_write then
     return parts[3] = public.my_member_id()::text and public.food_bytes_used(f) < public.board_allowance();
   end if;
-  return parts[3] = public.my_member_id()::text or public.is_family_parent(f)
-    or exists (select 1 from public.reward_jobs j where j.family_id = f and j.photo_path = p_name and j.created_by = public.my_member_id());
+  return parts[3] = public.my_member_id()::text
+    or (public.is_family_parent(f) and public.reward_role(parts[3]::uuid) = 'child')
+    or exists (select 1 from public.reward_jobs j where j.family_id = f and j.photo_path = p_name and j.created_by = public.my_member_id())
+    or (public.is_family_parent(f) and exists (select 1 from public.chore_done d where d.family_id = f and d.photo_path = p_name));
 end $$;
 revoke all on function public.reward_file_ok(text, boolean) from public, anon;
 grant execute on function public.reward_file_ok(text, boolean) to authenticated;
@@ -831,6 +867,7 @@ create policy reward_files_add on storage.objects for insert to authenticated
   with check (bucket_id = 'reward-files' and public.reward_file_ok(name, true));
 create policy reward_files_remove on storage.objects for delete to authenticated
   using (bucket_id = 'reward-files' and public.reward_file_ok(name, false));
+-- (read and remove follow the same rule: the person, a child's parent, or whoever checks that photo)
 
 -- ---------------------------------------------------------------- live updates (plain uuid keys only)
 
