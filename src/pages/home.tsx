@@ -29,9 +29,12 @@ export function HomePage() {
           <p className="text-sm text-muted-foreground">{today}</p>
         </div>
 
-        <div className="mb-4 lg:hidden"><WhatsForDinner compact /></div>
-        <SchoolToday />
-        <BinsToday />
+        {/* on wide screens these cards sit in the side panel instead */}
+        <div className="lg:hidden">
+          <div className="mb-4"><WhatsForDinner compact /></div>
+          <SchoolToday />
+          <BinsToday />
+        </div>
 
         <h3 className="mb-2 text-sm font-semibold">Your family</h3>
         <ul className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
