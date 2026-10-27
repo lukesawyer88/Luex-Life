@@ -87,7 +87,7 @@ Agreed 27 Oct 2026. Module 6 of 15 (everyone). Research: NatWest Rooster Money, 
 4. Parents must hand over or move the real money themselves.
 
 ## Build status (27 Oct 2026)
-Built and tested on a copy; not live yet (waiting for the owner's yes).
+Built and live (27 Oct 2026): database changes applied, stars already earned copied in, pay day and nightly tidy scheduled. 17 live Rewards checks passed (rolled back); security advisors show only the intended warnings. Trimmed the same day: everything outside the simple core is hidden under Settings → More features (see docs/more-features.md).
 
 Checks: 92 Rewards database checks (Calendar 94, Board 153, Food 65, Money 58, access 51 and app calls 13 still passing), 84 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 20 Rewards journey tests (plus Calendar, Board, Food and Money journeys still passing), 7 streak unit tests. An independent security review found 11 problems (two requests at once could spend the same stars twice; a grown-up who isn't a parent could pay a child any amount through a job or award stars through Board goals; un-ticking after spending left balances below nothing; deductions possible while switched off; a child could make a parent's habit easier; small star swaps rounded up; parents could open other grown-ups' photos; made-up photo paths passed; parents saw shared rewards they weren't in); all fixed and tested. Grown-ups' own treat jars are their own record, so they can add any amount (intended).
 

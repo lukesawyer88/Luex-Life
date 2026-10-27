@@ -55,6 +55,17 @@ begin
     values (f, m, p, a, k, key, left(coalesce(note, ''), 120), coalesce(d, public.family_today(f))) on conflict (source_key) do nothing;
   perform set_config('luex.rewardsys', 'off', true);
 end $$;
+-- (each delete is its own small function)
+create or replace function public.reward_remove_stars(key_like text)
+returns void language sql security definer set search_path = '' as $$
+  delete from public.star_entries where source_key like key_like
+$$;
+create or replace function public.reward_remove_money(key_like text)
+returns void language sql security definer set search_path = '' as $$
+  delete from public.pocket_entries where source_key like key_like
+$$;
+revoke all on function public.reward_remove_stars(text), public.reward_remove_money(text) from public, anon, authenticated;
+
 create or replace function public.reward_remove(key_like text)
 returns void language plpgsql security definer set search_path = '' as $$
 declare r record;
@@ -69,8 +80,8 @@ begin
     if public.reward_pot_balance(r.member_id, r.pot) - r.a < 0 then raise exception 'That money has already been used, so this can''t be undone'; end if;
   end loop;
   perform set_config('luex.rewardsys', 'on', true);
-  delete from public.star_entries where source_key like key_like;
-  delete from public.pocket_entries where source_key like key_like;
+  perform public.reward_remove_stars(key_like);
+  perform public.reward_remove_money(key_like);
   perform set_config('luex.rewardsys', 'off', true);
 end $$;
 revoke all on function public.reward_add_stars(uuid, uuid, integer, text, text, text), public.reward_add_money(uuid, uuid, text, numeric, text, text, text, date),
