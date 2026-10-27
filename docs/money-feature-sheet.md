@@ -85,7 +85,7 @@ Agreed 27 Oct 2026. Module 5 of 15 (parents only). Research: YNAB, Emma, Snoop, 
 3. Exchange rates and mortgage figures are estimates.
 
 ## Build status (27 Oct 2026)
-Built and tested on a copy; not live yet (waiting for the owner's yes).
+Built and live (27 Oct 2026): database changes applied, food shops copied across, reminders and nightly tidy scheduled. 16 live Money checks and 14 live app-call checks passed (rolled back); security advisors show only the intended warnings.
 
 Checks: 58 Money database checks (Calendar 94, Board 153, Food 65, access 51 and app calls 13 still passing), 58 one-screen checks (both parents at phone, tablet and laptop size; children and other grown-ups are shut out), 20 Money journey tests, 10 statement-reading unit tests. An independent security review found 9 problems (one parent could take over the other's "just mine" payments by making an account private; moving rows onto a private account; private payments revealing amounts through a shared bill; Food edits reaching private payments; duplicate checks revealing private imports; receipts not counting towards storage; shared receipts on private payments; the payday readable by children); all fixed and tested.
 
