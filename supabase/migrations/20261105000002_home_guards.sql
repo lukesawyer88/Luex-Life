@@ -17,8 +17,7 @@ returns uuid language sql stable security definer set search_path = '' as $$
       b.people[1 + mod(mod(floor((d - b.first_on)::numeric / (7 * b.every_weeks))::integer, cardinality(b.people)) + cardinality(b.people), cardinality(b.people))]
     end)
 $$;
-revoke all on function public.hc_bin_person(public.hc_bins, date) from public, anon;
-grant execute on function public.hc_bin_person(public.hc_bins, date) to authenticated;
+revoke all on function public.hc_bin_person(public.hc_bins, date) from public, anon, authenticated;
 
 -- people on a rota or looking after something: in this household, and a child only when a parent says so
 create or replace function public.hc_people_ok(f uuid, ids uuid[])
@@ -50,7 +49,11 @@ begin
     if tg_op = 'INSERT' then new.created_by := me; new.created_at := now(); new.archived_at := null; end if;
     if (tg_op = 'INSERT' or new.people is distinct from old.people) then
       if (select count(distinct x) from unnest(new.people) x) <> cardinality(new.people) then raise exception 'Pick each person once'; end if;
-      if not public.hc_people_ok(new.family_id, new.people) then raise exception 'Pick grown-ups in this household'; end if;
+      -- only people newly added are checked (a grown-up can reorder a rota a parent put a child on)
+      if not public.hc_people_ok(new.family_id, array(select unnest(new.people) except
+           select unnest(case when tg_op = 'UPDATE' then old.people else '{}'::uuid[] end))) then
+        raise exception 'Pick grown-ups in this household';
+      end if;
     end if;
 
   elsif tg_table_name = 'hc_bin_changes' then
@@ -121,11 +124,11 @@ create or replace function public.after_hc_repair()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare me uuid := public.my_member_id(); v uuid; who text;
 begin
-  if (select auth.uid()) is null then return null; end if;
+  if (select auth.uid()) is null or new.deleted_at is not null then return null; end if;
   select display_name into who from public.family_members where id = me;
   if tg_op = 'INSERT' then
     for v in select id from public.family_members where family_id = new.family_id and archived_at is null and user_id is not null
-               and role in ('parent', 'member') and id <> me loop
+               and role in ('parent', 'member') and id <> me and id is distinct from new.who loop
       perform public.notify(v, 'home', 'Something to fix', coalesce(who, 'Someone') || ': ' || new.title, '/m/home-care?tab=fix',
         'hc-fix-' || new.family_id, interval '2 minutes');
     end loop;
@@ -151,6 +154,8 @@ begin
   insert into public.hc_job_done (job_id, family_id, done_on, note, done_by)
     values (j.id, j.family_id, p_done_on, left(coalesce(trim(p_note), ''), 200), public.my_member_id());
   nd := (p_done_on + make_interval(months => j.every_months))::date;
+  -- done long ago: the next one is the first still to come
+  while nd < current_date loop nd := (nd + make_interval(months => j.every_months))::date; end loop;
   update public.hc_jobs set last_done_on = greatest(coalesce(last_done_on, p_done_on), p_done_on), next_due = greatest(next_due, nd) where id = j.id;
   return (select next_due from public.hc_jobs where id = j.id);
 end $$;
@@ -174,20 +179,21 @@ begin
       for r in
         with due as (
           -- normal collections tomorrow that weren't moved or skipped
-          select b.id, b.name, public.hc_bin_person(b, t) as person, t as on_date from public.hc_bins b
+          select b.id, b.name, public.hc_bin_person(b, t) as person from public.hc_bins b
           where b.family_id = f.id and b.archived_at is null and public.hc_bin_is_day(b, t)
             and not exists (select 1 from public.hc_bin_changes c where c.bin_id = b.id and c.on_date = t and (c.skip or c.move_to is not null))
           union all
-          -- collections moved to tomorrow
-          select b.id, b.name, public.hc_bin_person(b, c.on_date), c.on_date from public.hc_bin_changes c join public.hc_bins b on b.id = c.bin_id
-          where b.family_id = f.id and b.archived_at is null and c.move_to = t and not c.skip
+          -- collections moved to tomorrow (from a real collection day)
+          select b.id, b.name, public.hc_bin_person(b, c.on_date) from public.hc_bin_changes c join public.hc_bins b on b.id = c.bin_id
+          where b.family_id = f.id and b.archived_at is null and c.move_to = t and not c.skip and public.hc_bin_is_day(b, c.on_date)
         ), fresh as (
-          insert into public.hc_sends (ref_id, for_date, kind) select id, on_date, 'bin' from due on conflict do nothing returning ref_id, for_date
+          -- keyed on the day it's really collected, so a collection moved after its first reminder is reminded again
+          insert into public.hc_sends (ref_id, for_date, kind) select distinct id, t, 'bin' from due on conflict do nothing returning ref_id
         ), sendto as (
-          select d.name, m.id as member_id from due d join fresh s on s.ref_id = d.id and s.for_date = d.on_date
+          select d.name, m.id as member_id from due d join fresh s on s.ref_id = d.id
           join public.family_members m on m.family_id = f.id and m.archived_at is null and m.user_id is not null
             and ((d.person is not null and m.id = d.person)
-              or ((d.person is null or not exists (select 1 from public.family_members p where p.id = d.person and p.archived_at is null))
+              or ((d.person is null or not exists (select 1 from public.family_members p where p.id = d.person and p.archived_at is null and p.user_id is not null))
                   and m.role in ('parent', 'member')))
         )
         select member_id, string_agg(name, ' and ' order by name) as names, count(*) as k from sendto group by member_id
@@ -210,7 +216,7 @@ begin
         select d.title, d.kind, d.next_due, m.id as member_id from due d join fresh s on s.ref_id = d.id and s.kind = d.kind
         join public.family_members m on m.family_id = f.id and m.archived_at is null and m.user_id is not null
           and ((d.who is not null and m.id = d.who)
-            or ((d.who is null or not exists (select 1 from public.family_members p where p.id = d.who and p.archived_at is null))
+            or ((d.who is null or not exists (select 1 from public.family_members p where p.id = d.who and p.archived_at is null and p.user_id is not null))
                 and m.role in ('parent', 'member')))
       loop
         perform public.notify(r.member_id, 'home', case when r.kind = 'job_day' then 'Due today: ' else 'Due next week: ' end || r.title,
@@ -228,6 +234,20 @@ returns void language sql security definer set search_path = '' as $$
   delete from public.hc_sends where for_date < current_date - 30
 $$;
 revoke all on function public.hc_tidy_sends() from public, anon, authenticated;
+
+-- photos nothing uses any more (taken off, replaced, or on something removed), at least a day old: the nightly
+-- "file-tidy" server function deletes them (the database can't delete stored files itself)
+create or replace function public.hc_unused_files(p_limit integer)
+returns setof text language sql stable security definer set search_path = '' as $$
+  select o.name from storage.objects o
+  where o.bucket_id = 'home-files' and o.created_at < now() - interval '1 day'
+    and not exists (select 1 from public.hc_repairs r where r.photo_path = o.name and r.deleted_at is null)
+    and not exists (select 1 from public.hc_readings r where r.photo_path = o.name and r.deleted_at is null)
+  order by o.created_at
+  limit least(greatest(coalesce(p_limit, 500), 1), 1000)
+$$;
+revoke all on function public.hc_unused_files(integer) from public, anon, authenticated;
+grant execute on function public.hc_unused_files(integer) to service_role;
 
 -- ---------------------------------------------------------------- photos (private bucket): <family>/home/<file>.jpg
 

@@ -244,7 +244,7 @@ function StarterList({ existing, today, onClose }: { existing: Job[]; today: str
   async function add() {
     setBusy(true);
     try {
-      const rows = STARTER_JOBS.filter((s) => picked.has(s.title)).map((s) => ({ family_id: family.id, title: s.title, emoji: s.emoji, every_months: s.every, next_due: addDays(today, 7) }));
+      const rows = STARTER_JOBS.filter((s) => picked.has(s.title)).map((s) => ({ family_id: family.id, title: s.title, emoji: s.emoji, every_months: s.every, next_due: addDays(today, 14) }));
       const { error } = await supabase.from("hc_jobs").insert(rows);
       if (error) throw error;
       await refreshHome(qc, family.id);

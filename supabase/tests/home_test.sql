@@ -55,9 +55,11 @@ begin
   insert into public.hc_bins (family_id, name, colour, every_weeks, first_on, people) values (fa, 'Black bin', 'black', 2, today + 1, array[ann, pat]) returning id into b1;
   perform pg_temp.chk((select created_by from public.hc_bins where id = b1) = ann, 'bins record who added them');
   insert into public.hc_bins (family_id, name, colour, every_weeks, first_on, people) values (fa, 'Blue bin', 'blue', 1, today - 6, array[ann]) returning id into b2;
+  perform pg_temp.sys();
   perform pg_temp.chk((select public.hc_bin_person(b, today + 1) from public.hc_bins b where id = b1) = ann
     and (select public.hc_bin_person(b, today + 15) from public.hc_bins b where id = b1) = pat
     and (select public.hc_bin_person(b, today + 29) from public.hc_bins b where id = b1) = ann, 'the rota takes turns collection by collection');
+  perform pg_temp.act(ua, 'ann@test.dev');
   begin
     insert into public.hc_bins (family_id, name, first_on, people) values (fa, 'Ben''s', today, array[ben]);
     perform pg_temp.chk(false, 'someone from another family was put on the rota');
@@ -70,7 +72,9 @@ begin
     perform pg_temp.chk(false, 'a grown-up who isn''t a parent put a child on the rota');
   exception when others then perform pg_temp.chk(true, ''); end;
   insert into public.hc_bin_changes (bin_id, family_id, on_date, who) values (b1, fa, today + 15, gran);
+  perform pg_temp.sys();
   perform pg_temp.chk((select public.hc_bin_person(b, today + 15) from public.hc_bins b where id = b1) = gran, 'a grown-up swaps one collection');
+  perform pg_temp.act(ug, 'gran@test.dev');
   begin
     insert into public.hc_bin_changes (bin_id, family_id, on_date, skip) values (b1, fa, today + 2, true);
     perform pg_temp.chk(false, 'a change was made on a day that isn''t a collection');
@@ -201,6 +205,41 @@ begin
     perform public.queue_home_reminders();
     perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'home' and title = 'Bins out tonight'), 'a skipped or moved collection is reminded on the old day');
   end if;
+
+  -- ===== review fixes
+  perform pg_temp.act(ug, 'gran@test.dev');
+  update public.hc_bins set people = array[kid, gran] where name = 'Garden bin' and family_id = fa;
+  perform pg_temp.chk((select people from public.hc_bins where name = 'Garden bin' and family_id = fa) = array[kid, gran], 'a grown-up can add themselves to a rota a parent put a child on');
+  perform pg_temp.act(ua, 'ann@test.dev');
+  d := public.hc_job_tick((select id from public.hc_jobs where title = 'Test smoke alarms' and family_id = fa), today - 100, '');
+  perform pg_temp.chk(d >= current_date, 'a job ticked as done long ago still gets a date still to come: ' || d);
+  perform pg_temp.sys();
+  if tz is not null then
+    -- a collection moved after its first reminder is reminded again on its new day
+    delete from public.hc_bin_changes; delete from public.hc_sends; delete from public.notifications where kind = 'home' and title = 'Bins out tonight';
+    perform public.queue_home_reminders();
+    n := (select count(*) from public.notifications where kind = 'home' and title = 'Bins out tonight' and member_id = ann);
+    insert into public.hc_bin_changes (bin_id, family_id, on_date, move_to) values (b2, fa, today - 6, today + 1);
+    delete from public.notifications where kind = 'home' and title = 'Bins out tonight';
+    update public.hc_sends set for_date = today where ref_id = b2;
+    perform public.queue_home_reminders();
+    perform pg_temp.chk(n = 1 and exists (select 1 from public.notifications where kind = 'home' and title = 'Bins out tonight' and member_id = ann), 'a moved collection is reminded again on its new day');
+    -- someone on the rota without a login: the grown-ups hear instead
+    insert into public.family_members (family_id, display_name, role) values (fa, 'Lodger', 'member') returning id into j1;
+    update public.hc_bins set people = array[j1] where id = b1;
+    delete from public.hc_bin_changes; delete from public.hc_sends; delete from public.notifications where kind = 'home' and title = 'Bins out tonight';
+    perform public.queue_home_reminders();
+    perform pg_temp.chk((select count(*) from public.notifications where kind = 'home' and title = 'Bins out tonight' and member_id in (ann, pat, gran)) = 3, 'a rota person without a login means every grown-up is reminded');
+  end if;
+  perform pg_temp.act(ub, 'ben@test.dev');
+  begin
+    perform public.hc_bin_person(b, current_date) from public.hc_bins b where b.id = b1;
+    perform pg_temp.chk(false, 'a signed-in person used the rota function directly');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.sys();
+  insert into storage.objects (bucket_id, name, created_at) values ('home-files', fa || '/home/' || gen_random_uuid() || '.jpg', now() - interval '2 days');
+  update storage.objects set created_at = now() - interval '2 days' where name = ph;
+  perform pg_temp.chk((select count(*) from public.hc_unused_files(1000) u where u like fa || '/%') = 1, 'only photos nothing uses are tidied');
 
   -- ===== other families and visitors
   perform pg_temp.act(ub, 'ben@test.dev');

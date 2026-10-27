@@ -36,3 +36,10 @@ Agreed 27 Oct 2026. Module 10 of 15 (everyone; second release). Research: HomeZa
 2. A pile of overdue jobs that feels like nagging – a missed job just shows as due; nothing piles up.
 3. Bin reminders that don't arrive – Luex's own reminder, the night before, to the person whose turn it is.
 4. Bins, boiler and repairs in different places – one page, shared with the household.
+
+## Build status (27 Oct 2026)
+Built and tested; not live yet (waiting for the owner's yes to apply the database changes, then the page and Home card are added).
+
+Checks: 53 Home Care database checks (every other module's checks still passing), 84 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 22 journey tests (two bins and a rota, swapping and moving a collection, ready-made jobs and ticking the boiler service, a child adding a dripping tap with a photo, a grown-up sorting it and ticking it fixed, a meter reading, the Cleaning link, the Home card). An independent security review found no way for the wrong person to see things, and 9 smaller problems, all fixed and tested: a collection moved after its first reminder is reminded again; a rota person without a login means the grown-ups are reminded; switching on ready-made jobs no longer sends "due next week" straight away; the rota function can't be called directly; a job ticked as done long ago gets a date still to come; a grown-up can change a rota a parent put a child on; no double message when adding a job for someone; old bin changes can't remind on a wrong day; photos taken off or replaced are tidied nightly.
+
+Also found while testing (fixed and live): notification links landed on a page's first tab instead of the one they were for (Board, Money, Rewards, Food, School, Documents).
