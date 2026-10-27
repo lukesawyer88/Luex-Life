@@ -45,6 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         await supabase.auth.signOut();
         try {
+          // papers kept on this phone (Documents) go too
+          if (typeof caches !== "undefined") await caches.delete("luex-docs");
+        } catch {
+          /* nothing kept */
+        }
+        try {
+          for (const k of Object.keys(window.localStorage)) if (k.startsWith("luex.docs.")) window.localStorage.removeItem(k);
           window.localStorage.removeItem("luex.life.cache");
         } catch {
           /* private mode */
