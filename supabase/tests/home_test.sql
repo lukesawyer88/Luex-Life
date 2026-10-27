@@ -198,12 +198,12 @@ begin
       and not exists (select 1 from public.notifications where kind = 'home' and title like '%Boiler%' and member_id <> pat), 'the person who looks after a job hears a week before');
     perform pg_temp.chk((select count(*) from public.notifications where kind = 'home' and title = 'Due today: Test smoke alarms' and member_id in (ann, pat, gran)) = 3, 'a job nobody looks after tells every grown-up on the day');
     -- a moved collection: Blue bin skipped tomorrow, Black bin moved a day later
-    delete from public.hc_sends;
-    delete from public.notifications where kind = 'home' and title = 'Bins out tonight';
+    delete from public.hc_sends where ref_id in (select id from public.hc_bins where family_id = fa) or ref_id in (select id from public.hc_jobs where family_id = fa);
+    delete from public.notifications where kind = 'home' and title = 'Bins out tonight' and family_id = fa;
     insert into public.hc_bin_changes (bin_id, family_id, on_date, skip) values (b2, fa, today + 1, true);
     insert into public.hc_bin_changes (bin_id, family_id, on_date, move_to) values (b1, fa, today + 1, today + 2);
     perform public.queue_home_reminders();
-    perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'home' and title = 'Bins out tonight'), 'a skipped or moved collection is reminded on the old day');
+    perform pg_temp.chk(not exists (select 1 from public.notifications where kind = 'home' and title = 'Bins out tonight' and family_id = fa), 'a skipped or moved collection is reminded on the old day');
   end if;
 
   -- ===== review fixes
@@ -216,18 +216,18 @@ begin
   perform pg_temp.sys();
   if tz is not null then
     -- a collection moved after its first reminder is reminded again on its new day
-    delete from public.hc_bin_changes; delete from public.hc_sends; delete from public.notifications where kind = 'home' and title = 'Bins out tonight';
+    delete from public.hc_bin_changes where family_id = fa; delete from public.hc_sends where ref_id in (select id from public.hc_bins where family_id = fa) or ref_id in (select id from public.hc_jobs where family_id = fa); delete from public.notifications where kind = 'home' and title = 'Bins out tonight' and family_id = fa;
     perform public.queue_home_reminders();
     n := (select count(*) from public.notifications where kind = 'home' and title = 'Bins out tonight' and member_id = ann);
     insert into public.hc_bin_changes (bin_id, family_id, on_date, move_to) values (b2, fa, today - 6, today + 1);
-    delete from public.notifications where kind = 'home' and title = 'Bins out tonight';
+    delete from public.notifications where kind = 'home' and title = 'Bins out tonight' and family_id = fa;
     update public.hc_sends set for_date = today where ref_id = b2;
     perform public.queue_home_reminders();
     perform pg_temp.chk(n = 1 and exists (select 1 from public.notifications where kind = 'home' and title = 'Bins out tonight' and member_id = ann), 'a moved collection is reminded again on its new day');
     -- someone on the rota without a login: the grown-ups hear instead
     insert into public.family_members (family_id, display_name, role) values (fa, 'Lodger', 'member') returning id into j1;
     update public.hc_bins set people = array[j1] where id = b1;
-    delete from public.hc_bin_changes; delete from public.hc_sends; delete from public.notifications where kind = 'home' and title = 'Bins out tonight';
+    delete from public.hc_bin_changes where family_id = fa; delete from public.hc_sends where ref_id in (select id from public.hc_bins where family_id = fa) or ref_id in (select id from public.hc_jobs where family_id = fa); delete from public.notifications where kind = 'home' and title = 'Bins out tonight' and family_id = fa;
     perform public.queue_home_reminders();
     perform pg_temp.chk((select count(*) from public.notifications where kind = 'home' and title = 'Bins out tonight' and member_id in (ann, pat, gran)) = 3, 'a rota person without a login means every grown-up is reminded');
   end if;

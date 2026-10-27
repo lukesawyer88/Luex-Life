@@ -15,6 +15,7 @@ const RewardsPage = lazy(() => import("@/modules/rewards/rewards-page").then((m)
 const SchoolPage = lazy(() => import("@/modules/school/school-page").then((m) => ({ default: m.SchoolPage })));
 const DocumentsPage = lazy(() => import("@/modules/documents/documents-page").then((m) => ({ default: m.DocumentsPage })));
 const ContactsPage = lazy(() => import("@/modules/contacts/contacts-page").then((m) => ({ default: m.ContactsPage })));
+const HomeCarePage = lazy(() => import("@/modules/home-care/home-care-page").then((m) => ({ default: m.HomeCarePage })));
 
 function Loading() {
   return <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
@@ -43,6 +44,7 @@ export function ModulePage() {
   if (m.key === "school") return <Suspense fallback={<Loading />}><SchoolPage /></Suspense>;
   if (m.key === "documents") return <Suspense fallback={<Loading />}><DocumentsPage /></Suspense>;
   if (m.key === "contacts") return <Suspense fallback={<Loading />}><ContactsPage /></Suspense>;
+  if (m.key === "home-care") return <Suspense fallback={<Loading />}><HomeCarePage /></Suspense>;
   const Icon = m.icon;
   return (
     <Windows>
