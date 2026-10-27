@@ -3,6 +3,7 @@ import { NotebookPen, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useFamilyState } from "@/lib/family-context";
+import { WhatsForDinner } from "@/modules/food/whats-for-dinner";
 
 import { prefsOf, useChoreDone, useChores, useDayNotes } from "./data";
 import { Countdowns } from "./day-panel";
@@ -94,6 +95,8 @@ export function WallScreen({ onClose }: { onClose: () => void }) {
         ) : null}
         <div className="flex flex-wrap gap-2"><Countdowns /></div>
       </header>
+
+      <div className="shrink-0"><WhatsForDinner /></div>
 
       {note || choresLeft ? (
         <div className="flex shrink-0 flex-wrap gap-3">

@@ -1,12 +1,19 @@
 import { useParams } from "@tanstack/react-router";
-import { Hammer } from "lucide-react";
+import { Hammer, Loader2 } from "lucide-react";
+import { lazy, Suspense } from "react";
 
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { useFamilyState } from "@/lib/family-context";
-import { BoardPage } from "@/modules/board/board-page";
-import { CalendarPage } from "@/modules/calendar/calendar-page";
-import { FoodPage } from "@/modules/food/food-page";
 import { MODULE_BY_KEY } from "@/modules/registry";
+
+// each module loads only when it is opened (keeps the first download small)
+const CalendarPage = lazy(() => import("@/modules/calendar/calendar-page").then((m) => ({ default: m.CalendarPage })));
+const BoardPage = lazy(() => import("@/modules/board/board-page").then((m) => ({ default: m.BoardPage })));
+const FoodPage = lazy(() => import("@/modules/food/food-page").then((m) => ({ default: m.FoodPage })));
+
+function Loading() {
+  return <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
+}
 
 /** Placeholder for a module that is planned but not built yet. Real modules replace this per key. */
 export function ModulePage() {
@@ -23,9 +30,9 @@ export function ModulePage() {
       </Windows>
     );
   }
-  if (m.key === "calendar") return <CalendarPage />;
-  if (m.key === "board") return <BoardPage />;
-  if (m.key === "food") return <FoodPage />;
+  if (m.key === "calendar") return <Suspense fallback={<Loading />}><CalendarPage /></Suspense>;
+  if (m.key === "board") return <Suspense fallback={<Loading />}><BoardPage /></Suspense>;
+  if (m.key === "food") return <Suspense fallback={<Loading />}><FoodPage /></Suspense>;
   const Icon = m.icon;
   return (
     <Windows>

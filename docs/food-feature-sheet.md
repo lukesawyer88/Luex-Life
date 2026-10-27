@@ -94,3 +94,10 @@ Agreed 27 Oct 2026. Module 4 of 15. Research: Paprika, Mealime, Samsung Food (Wh
 3. Text recognition: printed text good, handwriting and shortened receipt names poor; always a check screen.
 4. Calorie figures are estimates; kept away from children.
 5. Allergy warnings are a help, never a guarantee.
+
+## Build status (27 Oct 2026)
+Built and tested on a local copy; waiting for the owner's yes to go live (database changes, two schedules, and the recipe-import service).
+
+Checks: 65 Food database security checks (Calendar 158 and Board 153 still passing), 66 one-screen checks (parent, child, grandparent at phone, tablet and laptop size), 17 Food journey tests, 4 ingredient unit tests. An independent security review found 7 problems inside a family (none across families); all fixed and tested.
+
+Known limits: recipe import doesn't work on every site; the first page or receipt scan downloads the text reader (a few MB) from the internet; barcode data is patchy for UK own-brand items; only adds and ticks wait for a signal on the shopping list; meals can't be dragged within a day.

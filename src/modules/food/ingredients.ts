@@ -25,6 +25,8 @@ const UNITS: Record<string, string> = {
   bunch: "bunch", bunches: "bunch",
   jar: "jar", jars: "jar",
   bag: "bag", bags: "bag",
+  pint: "pint", pints: "pint", pt: "pint",
+  dozen: "dozen", box: "box", boxes: "box", bottle: "bottle", bottles: "bottle", carton: "carton", cartons: "carton",
 };
 
 function readNumber(s: string): [number | null, string] {
@@ -81,8 +83,15 @@ export function formatQty(q: number | null): string {
   return String(Math.round(q * 10) / 10);
 }
 
+const COUNT_UNITS = new Set(["clove", "tin", "pack", "slice", "handful", "jar", "bag", "pint", "bottle", "carton", "cup", "pinch", "bunch", "box"]);
+/** "3 clove" -> "3 cloves", "2 bunch" -> "2 bunches" */
+export function unitFor(unit: string | null, qty: number | null): string | null {
+  if (!unit || qty === null || qty <= 1 || !COUNT_UNITS.has(unit)) return unit;
+  return /(ch|x|sh)$/.test(unit) ? unit + "es" : unit + "s";
+}
+
 export function formatIngredient(i: Ingredient): string {
-  return [formatQty(i.qty), i.unit, i.name].filter(Boolean).join(" ").replace(/(\d) (g|kg|ml|l)\b/, "$1$2") + (i.note ? `, ${i.note}` : "");
+  return [formatQty(i.qty), unitFor(i.unit, i.qty), i.name].filter(Boolean).join(" ").replace(/(\d) (g|kg|ml|l)\b/, "$1$2") + (i.note ? `, ${i.note}` : "");
 }
 
 /** a word-level key so "Onions" and "onion" combine */

@@ -4,6 +4,7 @@ import { CalendarDays, Camera, UserPlus } from "lucide-react";
 import { MemberAvatar } from "@/components/member-avatar";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { useFamilyState } from "@/lib/family-context";
+import { WhatsForDinner } from "@/modules/food/whats-for-dinner";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -25,6 +26,8 @@ export function HomePage() {
           <h2 className="text-lg font-bold">{greeting()}, {me.display_name}</h2>
           <p className="text-sm text-muted-foreground">{today}</p>
         </div>
+
+        <div className="mb-4 lg:hidden"><WhatsForDinner compact /></div>
 
         <h3 className="mb-2 text-sm font-semibold">Your family</h3>
         <ul className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
@@ -53,6 +56,7 @@ export function HomePage() {
         ) : null}
       </RecordsWindow>
       <DetailWindow>
+        <div className="mb-4"><WhatsForDinner compact /></div>
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold"><CalendarDays className="size-4" />Today</div>
         <p className="text-sm">Nothing planned yet.</p>
         <p className="mt-2 text-sm text-[var(--muted-foreground)]">Your family calendar is the next thing we're building. Everything planned for today will show up here, for each person.</p>

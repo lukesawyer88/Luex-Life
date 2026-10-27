@@ -21,6 +21,8 @@ Updated 27 Oct 2026.
 16. **Printed year books.** The free PDF is built. Compare print-on-demand partners' real prices (posting straight to the family) and choose one.
 17. **Safeguarding adviser** on children's chats, location requests and journal (same adviser as Kids' Space).
 18. **Privacy policy wording**: Board messages are encrypted in transit and on the server and private to the family, but not end-to-end encrypted.
+19. **Text reader files** (page and receipt scanning) download from the internet the first time; host them ourselves before launch if Cloudflare's security settings block them.
+20. **Watch apps** (Food) after the store apps.
 
 ## Waiting on something
 1. **Forward an email to add an event** – needs an email address on the Luex domain (luexgroup.com is still on Wix).
