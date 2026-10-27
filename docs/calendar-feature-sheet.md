@@ -101,3 +101,12 @@ Agreed 27 Oct 2026. Module 2 of 15. Research: Cozi, Skylight, Hearth, TimeTree, 
 8. Emergency cards – Contacts and Emergency.
 9. Messages and photos – Family Board.
 10. Gift budgets – Household Money.
+
+## Build status (27 Oct 2026)
+Built and live. Every must-have and niche item is in, except forwarding an email to add an event (waiting on a domain email address).
+
+Checks: 158 database security checks (locally, against an identical copy of the live rules), 11 live checks, 20 journey tests (parent, child, grandparent), 90 one-screen checks at phone, tablet and laptop size, 14 unit tests. Two independent security reviews found 13 problems; all fixed before go-live.
+
+Running on the server: push notifications (every minute: reminders, "leave now", grouped change alerts, wish list summaries, Sunday 18:00 weekly summary) and calendar import (every 10 minutes, plus "Sync now").
+
+Still to check on real phones: notifications arriving, camera uploads, offline opening, kitchen-screen mode.
