@@ -13,6 +13,7 @@ const FoodPage = lazy(() => import("@/modules/food/food-page").then((m) => ({ de
 const MoneyPage = lazy(() => import("@/modules/money/money-page").then((m) => ({ default: m.MoneyPage })));
 const RewardsPage = lazy(() => import("@/modules/rewards/rewards-page").then((m) => ({ default: m.RewardsPage })));
 const SchoolPage = lazy(() => import("@/modules/school/school-page").then((m) => ({ default: m.SchoolPage })));
+const DocumentsPage = lazy(() => import("@/modules/documents/documents-page").then((m) => ({ default: m.DocumentsPage })));
 
 function Loading() {
   return <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
@@ -39,6 +40,7 @@ export function ModulePage() {
   if (m.key === "money") return <Suspense fallback={<Loading />}><MoneyPage /></Suspense>;
   if (m.key === "pocket") return <Suspense fallback={<Loading />}><RewardsPage /></Suspense>;
   if (m.key === "school") return <Suspense fallback={<Loading />}><SchoolPage /></Suspense>;
+  if (m.key === "documents") return <Suspense fallback={<Loading />}><DocumentsPage /></Suspense>;
   const Icon = m.icon;
   return (
     <Windows>
