@@ -191,6 +191,31 @@ export type Database = {
         { family_id: string; folder_id?: string | null; title: string; person_id?: string | null; pages?: string[]; expires_on?: string | null; remind_days?: number; where_kept?: string | null; ref?: string | null; phone?: string | null; price?: number | null; notes?: string; private_to?: string | null },
         { folder_id?: string | null; title?: string; person_id?: string | null; pages?: string[]; expires_on?: string | null; remind_days?: number; where_kept?: string | null; ref?: string | null; phone?: string | null; price?: number | null; notes?: string }
       >;
+      em_cards: Table<
+        { id: string; family_id: string; member_id: string | null; pet_name: string | null; allergies: string; medicines: string; blood_group: string | null; doctor: string | null; doctor_phone: string | null; microchip: string | null; insurer: string | null; notes: string; updated_by: string | null; updated_at: string; deleted_at: string | null },
+        { family_id: string; member_id?: string | null; pet_name?: string | null; allergies?: string; medicines?: string; blood_group?: string | null; doctor?: string | null; doctor_phone?: string | null; microchip?: string | null; insurer?: string | null; notes?: string },
+        { pet_name?: string | null; allergies?: string; medicines?: string; blood_group?: string | null; doctor?: string | null; doctor_phone?: string | null; microchip?: string | null; insurer?: string | null; notes?: string; deleted_at?: string | null }
+      >;
+      em_conditions: Table<
+        { card_id: string; family_id: string; conditions: string; shared: boolean },
+        { card_id: string; family_id: string; conditions?: string; shared?: boolean },
+        { conditions?: string; shared?: boolean }
+      >;
+      em_contacts: Table<
+        { id: string; family_id: string; name: string; grp: string; phone: string | null; phone2: string | null; email: string | null; address: string | null; notes: string; call_order: number | null; created_by: string | null; created_at: string; updated_at: string; deleted_at: string | null },
+        { family_id: string; name: string; grp?: string; phone?: string | null; phone2?: string | null; email?: string | null; address?: string | null; notes?: string; call_order?: number | null },
+        { name?: string; grp?: string; phone?: string | null; phone2?: string | null; email?: string | null; address?: string | null; notes?: string; call_order?: number | null; deleted_at?: string | null }
+      >;
+      em_home: Table<
+        { family_id: string; address: string | null; stopcock: string | null; fuse_box: string | null; gas_meter: string | null; first_aid: string | null; spare_key: string | null; wifi_name: string | null; wifi_password: string | null; wifi_in_link: boolean; meet_point: string | null; plan: string | null; bedtimes: string | null; updated_by: string | null; updated_at: string },
+        { family_id: string; address?: string | null; stopcock?: string | null; fuse_box?: string | null; gas_meter?: string | null; first_aid?: string | null; spare_key?: string | null; wifi_name?: string | null; wifi_password?: string | null; wifi_in_link?: boolean; meet_point?: string | null; plan?: string | null; bedtimes?: string | null },
+        { address?: string | null; stopcock?: string | null; fuse_box?: string | null; gas_meter?: string | null; first_aid?: string | null; spare_key?: string | null; wifi_name?: string | null; wifi_password?: string | null; wifi_in_link?: boolean; meet_point?: string | null; plan?: string | null; bedtimes?: string | null }
+      >;
+      em_shares: Table<
+        { id: string; family_id: string; name: string; token_hash: string; expires_at: string; revoked_at: string | null; last_used_at: string | null; created_by: string | null; created_at: string },
+        { id?: string; family_id: string; name: string; token_hash: string; expires_at: string; revoked_at?: string | null; last_used_at?: string | null; created_by?: string | null; created_at?: string },
+        { revoked_at?: string | null }
+      >;
       families: Table<
         { id: string; name: string; owner_id: string; signup_source: string; created_at: string; archived_at: string | null; timezone: string; calendar_prefs: Json; weather_place: string | null; weather_lat: number | null; weather_lon: number | null },
         { id?: string; name: string; owner_id: string; signup_source?: string; created_at?: string; archived_at?: string | null; timezone?: string; calendar_prefs?: Json; weather_place?: string | null; weather_lat?: number | null; weather_lon?: number | null },
@@ -586,6 +611,8 @@ export type Database = {
       reward_cheer: { Args: { p_habit: string }; Returns: undefined };
       doc_setup: { Args: Record<string, never>; Returns: undefined };
       doc_remove: { Args: { p_doc: string }; Returns: undefined };
+      em_create_share: { Args: { p_name: string; p_days: number }; Returns: string };
+      em_shared: { Args: { p_token: string }; Returns: Json };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
