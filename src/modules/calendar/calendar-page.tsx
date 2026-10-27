@@ -8,6 +8,7 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { readLocal, writeLocal } from "@/lib/local";
 import { useDesktop } from "@/lib/use-desktop";
@@ -38,6 +39,7 @@ const VIEW_KEY = "luex.life.cal.view";
 
 export function CalendarPage() {
   const { family, me, role } = useFamilyState();
+  const canPrint = useExtra("cal.print");
   const tz = family.timezone;
   const prefs = prefsOf(family);
   const weekStartsOn = prefs.weekStart ?? 1;
@@ -171,9 +173,9 @@ export function CalendarPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-60">
                     <DropdownMenuItem onSelect={() => setDialog("key")}><KeyRound className="mr-2 size-4" /> What the colours mean</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => { if (view !== "week") setView("week"); setTimeout(() => window.print(), 300); }}><Printer className="mr-2 size-4" /> Print this week</DropdownMenuItem>
+                    {canPrint ? <DropdownMenuItem onSelect={() => { if (view !== "week") setView("week"); setTimeout(() => window.print(), 300); }}><Printer className="mr-2 size-4" /> Print this week</DropdownMenuItem> : null}
                     <DropdownMenuItem onSelect={() => setDialog("wall")}><Tv className="mr-2 size-4" /> Kitchen screen mode</DropdownMenuItem>
-                    {role === "parent" ? <DropdownMenuItem onSelect={() => setDialog("share")}><Share2 className="mr-2 size-4" /> Share with a babysitter or family</DropdownMenuItem> : null}
+                    {role === "parent" ? <DropdownMenuItem onSelect={() => setDialog("share")}><Share2 className="mr-2 size-4" /> Share a link</DropdownMenuItem> : null}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setDialog("settings")}><Settings2 className="mr-2 size-4" /> Calendar settings</DropdownMenuItem>
                   </DropdownMenuContent>

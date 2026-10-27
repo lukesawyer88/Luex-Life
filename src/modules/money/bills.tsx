@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { useDesktop } from "@/lib/use-desktop";
@@ -342,6 +343,7 @@ function BillDetail({ b, today, rates, onEdit, onPay, onClosed, hideTitle }: {
 
 function EditBill({ value, onClose, onSaved }: { value: Bill | "new" | null; onClose: () => void; onSaved: (id: string) => void }) {
   const { family, me } = useFamilyState();
+  const currencyOn = useExtra("money.currency");
   const qc = useQueryClient();
   const accounts = useAccounts().data ?? [];
   const categories = (useCategories().data ?? []).filter((c) => c.direction === "out" && !c.archived_at);
@@ -408,13 +410,15 @@ function EditBill({ value, onClose, onSaved }: { value: Bill | "new" | null; onC
           <Chip on={f.kind === "subscription"} onClick={() => set("kind", "subscription")}>Subscription</Chip>
         </div>
         <Field label="Name"><Input data-testid="bill-name" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder={f.kind === "bill" ? "Electricity" : "Netflix"} className="h-11" maxLength={80} data-autofocus /></Field>
-        <div className="grid grid-cols-[1fr_auto] gap-2">
+        <div className={currencyOn || f.currency !== "GBP" ? "grid grid-cols-[1fr_auto] gap-2" : ""}>
           <Field label="Amount"><Input data-testid="bill-amount" inputMode="decimal" value={f.amount} onChange={(e) => set("amount", e.target.value)} placeholder="0.00" className="h-11" /></Field>
-          <Field label="Money">
-            <NativeSelect value={f.currency} onChange={(e) => set("currency", e.target.value)} aria-label="Currency" className="w-24">
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </NativeSelect>
-          </Field>
+          {currencyOn || f.currency !== "GBP" ? (
+            <Field label="Money">
+              <NativeSelect value={f.currency} onChange={(e) => set("currency", e.target.value)} aria-label="Currency" className="w-24">
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </NativeSelect>
+            </Field>
+          ) : null}
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Field label="How often">

@@ -1,6 +1,7 @@
 import { Images, LayoutGrid, ListChecks, MessagesSquare, MoreHorizontal, NotebookPen, Search, Settings2, Target } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { useExtra } from "@/lib/extras";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs } from "@/modules/calendar/ui";
@@ -48,22 +49,26 @@ export function BoardPage() {
   const [target, setTarget] = useState<BoardTarget>(first);
   const [dialog, setDialog] = useState<null | "search" | "settings">(null);
   const unread = useUnreadTotal();
+  const goalsOn = useExtra("board.goals");
+  const journalOn = useExtra("board.journal");
   const go = (t: BoardTarget) => setTarget(t);
+  // goals and journal are extras: if they're off (e.g. an old notification link), show the Board instead
+  const tab = (target.tab === "goals" && !goalsOn) || (target.tab === "journal" && !journalOn) ? "home" : target.tab;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="flex items-center gap-1">
         <div className="min-w-0 flex-1">
           <Tabs<BoardTab>
-            value={target.tab}
+            value={tab}
             onChange={(tab) => setTarget({ tab })}
             items={[
               { key: "home", label: "Board", icon: LayoutGrid },
               { key: "chats", label: unread ? `Chats (${unread > 99 ? "99+" : unread})` : "Chats", icon: MessagesSquare },
               { key: "photos", label: "Photos", icon: Images },
               { key: "lists", label: "Lists", icon: ListChecks },
-              { key: "goals", label: "Goals", icon: Target },
-              { key: "journal", label: "Journal", icon: NotebookPen },
+              ...(goalsOn ? [{ key: "goals" as const, label: "Goals", icon: Target }] : []),
+              ...(journalOn ? [{ key: "journal" as const, label: "Journal", icon: NotebookPen }] : []),
             ]}
           />
         </div>
@@ -78,12 +83,12 @@ export function BoardPage() {
         </DropdownMenu>
       </div>
 
-      {target.tab === "home" ? <BoardHome onGo={go} /> : null}
-      {target.tab === "chats" ? <ChatsTab key={target.threadId ?? "chats"} target={target} onGo={go} /> : null}
-      {target.tab === "photos" ? <PhotosTab target={target} onGo={go} /> : null}
-      {target.tab === "lists" ? <ListsTab target={target} onGo={go} /> : null}
-      {target.tab === "goals" ? <GoalsTab target={target} onGo={go} /> : null}
-      {target.tab === "journal" ? <JournalTab target={target} onGo={go} /> : null}
+      {tab === "home" ? <BoardHome onGo={go} /> : null}
+      {tab === "chats" ? <ChatsTab key={target.threadId ?? "chats"} target={target} onGo={go} /> : null}
+      {tab === "photos" ? <PhotosTab target={target} onGo={go} /> : null}
+      {tab === "lists" ? <ListsTab target={target} onGo={go} /> : null}
+      {tab === "goals" ? <GoalsTab target={target} onGo={go} /> : null}
+      {tab === "journal" ? <JournalTab target={target} onGo={go} /> : null}
 
       <BoardSearch open={dialog === "search"} onOpenChange={(o) => setDialog(o ? "search" : null)} onGo={(t) => { setDialog(null); go(t); }} />
       <BoardSettingsDialog open={dialog === "settings"} onOpenChange={(o) => setDialog(o ? "settings" : null)} />

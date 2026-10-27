@@ -6,6 +6,7 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
 import type { Member } from "@/lib/family";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { useDesktop } from "@/lib/use-desktop";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ export function KidsTab({ target }: TabProps) {
   const shop = useMemo(() => (rewards.data?.rewards ?? []).filter((r) => r.kind === "shop"), [rewards.data]);
   const [openId, setOpenId] = useState<string | null>(target.memberId ?? null);
   const [shopEdit, setShopEdit] = useState<Reward | "new" | null>(null);
+  const giveOn = useExtra("rewards.give");
   const open = children.find((c) => c.id === openId) ?? null;
 
   useEffect(() => { if (desktop && !openId && children.length) setOpenId(children[0].id); }, [desktop, openId, children]);
@@ -59,7 +61,7 @@ export function KidsTab({ target }: TabProps) {
                       <span className="flex items-center gap-1 text-2xl font-extrabold tabular-nums"><Star className="size-6 fill-[var(--gold)] text-[var(--gold)]" />{b.stars}</span>
                     </span>
                     <span className="flex flex-wrap gap-x-3 text-sm tabular-nums">
-                      <span>👛 {money(b.spend)}</span><span>🐷 {money(b.save)}</span><span>💝 {money(b.give)}</span>
+                      <span>👛 {money(b.spend)}</span><span>🐷 {money(b.save)}</span>{giveOn || b.give !== 0 ? <span>💝 {money(b.give)}</span> : null}
                     </span>
                     {b.waiting ? <span className="w-fit rounded-full bg-[var(--status-amber-soft)] px-2.5 py-0.5 text-xs font-semibold text-[var(--status-amber)]">{b.waiting} waiting for an OK</span> : null}
                   </button>
@@ -108,8 +110,19 @@ function ChildDetail({ child, balance, settings, hideTitle }: { child: Member; b
   const [sheet, setSheet] = useState<"pocket" | "move" | "advance" | "stars" | "swap" | null>(null);
   const [goal, setGoal] = useState<PocketGoal | "new" | null>(null);
   const [habit, setHabit] = useState<Habit | "new" | null>(null);
+  // extras (More features)
+  const deductOn = useExtra("rewards.deduct");
+  const toothOn = useExtra("rewards.toothfairy");
+  const swapOn = useExtra("rewards.swap");
+  const advanceOn = useExtra("rewards.advance");
+  const habitsOn = useExtra("rewards.habits");
+  const teenOn = useExtra("rewards.teen");
+  const deductions = deductOn && settings.deductions_on;
 
-  const kinds: EntryKind[] = ["bonus", ...(settings.deductions_on ? ["deduction" as const] : []), "spend", "cash", "gift", "tooth_fairy", "birthday", "other"];
+  const kinds: EntryKind[] = [
+    "bonus", ...(deductions ? ["deduction" as const] : []), "spend", "cash", "gift",
+    ...(toothOn ? ["tooth_fairy" as const, "birthday" as const] : []), "other",
+  ];
   const amount = Number(person?.pocket_amount ?? 0);
 
   return (
@@ -125,7 +138,7 @@ function ChildDetail({ child, balance, settings, hideTitle }: { child: Member; b
         <Star className="size-9 fill-[var(--gold)] text-[var(--gold)]" />
         <span className="flex-1 text-3xl font-extrabold tabular-nums">{balance.stars}<span className="ml-1 text-sm font-semibold text-muted-foreground">stars</span></span>
         <Button data-testid="kid-bonus-stars" variant="outline" className="h-10 rounded-full" onClick={() => setSheet("stars")}>Stars</Button>
-        {settings.stars_per_pound ? <Button variant="outline" className="h-10 rounded-full" onClick={() => setSheet("swap")}>Swap</Button> : null}
+        {swapOn && settings.stars_per_pound ? <Button variant="outline" className="h-10 rounded-full" onClick={() => setSheet("swap")}>Swap</Button> : null}
       </div>
 
       <PotTiles spend={balance.spend} save={balance.save} give={balance.give} />
@@ -140,7 +153,7 @@ function ChildDetail({ child, balance, settings, hideTitle }: { child: Member; b
             ? `${money(amount)} ${person?.pocket_every === "month" ? "a month" : person?.pocket_every === "fortnight" ? "every 2 weeks" : "a week"} · next on ${person?.next_pay ? new Date(person.next_pay + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }) : "—"}`
             : "No regular pocket money yet."}
           {person?.paused_until && person.paused_until >= today ? ` · paused until ${person.paused_until}` : ""}
-          {person?.teen_mode ? " · teen mode" : ""}
+          {teenOn && person?.teen_mode ? " · teen mode" : ""}
         </p>
         {Number(person?.advance_owed ?? 0) > 0 ? <p className="text-sm font-semibold text-[var(--status-amber)]">Owes {money(person?.advance_owed)} (paying back {money(person?.advance_repay)} each pay day)</p> : null}
         <div className="flex flex-wrap gap-2">
@@ -150,7 +163,7 @@ function ChildDetail({ child, balance, settings, hideTitle }: { child: Member; b
             </Button>
           ))}
           <Button data-testid="kid-move" variant="outline" className="h-11 rounded-full" onClick={() => setSheet("move")}><ArrowLeftRight className="size-4" /> Move</Button>
-          <Button data-testid="kid-advance" variant="outline" className="h-11 rounded-full" onClick={() => setSheet("advance")}><HandCoins className="size-4" /> Advance</Button>
+          {advanceOn ? <Button data-testid="kid-advance" variant="outline" className="h-11 rounded-full" onClick={() => setSheet("advance")}><HandCoins className="size-4" /> Advance</Button> : null}
         </div>
       </section>
 
@@ -164,7 +177,7 @@ function ChildDetail({ child, balance, settings, hideTitle }: { child: Member; b
         )) : <p className="text-sm text-muted-foreground">No goals yet. Pick something from their wish list.</p>}
       </section>
 
-      <section className="space-y-2">
+      {habitsOn ? <section className="space-y-2">
         <div className="flex items-center gap-2">
           <h4 className="flex-1 font-bold">Habits</h4>
           <Button data-testid="kid-habit-add" variant="outline" className="h-10 rounded-full" onClick={() => setHabit("new")}><Plus className="size-4" /> Habit</Button>
@@ -175,7 +188,7 @@ function ChildDetail({ child, balance, settings, hideTitle }: { child: Member; b
             <Button variant="ghost" size="icon" className="size-10 rounded-full" onClick={() => setHabit(h)} aria-label="Change habit"><Pencil className="size-4" /></Button>
           </div>
         )) : <p className="text-sm text-muted-foreground">Habits earn stars each time they're reached (brushing teeth, reading).</p>}
-      </section>
+      </section> : null}
 
       <section className="space-y-2">
         <h4 className="font-bold">Money in and out</h4>
@@ -188,7 +201,7 @@ function ChildDetail({ child, balance, settings, hideTitle }: { child: Member; b
       <PocketSettingsSheet open={sheet === "pocket"} onClose={() => setSheet(null)} childId={child.id} name={child.display_name} person={person} />
       <MoveSheet open={sheet === "move"} onClose={() => setSheet(null)} memberId={child.id} balances={{ spend: balance.spend, save: balance.save, give: balance.give }} />
       <AdvanceSheet open={sheet === "advance"} onClose={() => setSheet(null)} childId={child.id} name={child.display_name} />
-      <StarsSheet open={sheet === "stars"} onClose={() => setSheet(null)} childId={child.id} name={child.display_name} deductions={settings.deductions_on} />
+      <StarsSheet open={sheet === "stars"} onClose={() => setSheet(null)} childId={child.id} name={child.display_name} deductions={deductions} />
       <SwapSheet open={sheet === "swap"} onClose={() => setSheet(null)} memberId={child.id} stars={balance.stars} settings={settings} />
       <GoalSheet value={goal} onClose={() => setGoal(null)} memberId={child.id} />
       <HabitSheet value={habit} onClose={() => setHabit(null)} childId={child.id} />

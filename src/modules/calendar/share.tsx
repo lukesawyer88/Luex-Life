@@ -14,44 +14,40 @@ import { useShares, type Share } from "./data";
 import { dayKey, shortDate, timeOf } from "./time";
 import { Chip, Field, PeoplePicker, Sheet } from "./ui";
 
-type Kind = "babysitter" | "outside";
-const LENGTHS: Record<Kind, { hours: number; label: string }[]> = {
-  babysitter: [
-    { hours: 12, label: "Tonight (12 hours)" },
-    { hours: 72, label: "This weekend (3 days)" },
-    { hours: 168, label: "A week" },
-  ],
-  outside: [
-    { hours: 24 * 31, label: "A month" },
-    { hours: 24 * 183, label: "6 months" },
-    { hours: 24 * 365, label: "A year" },
-  ],
-};
+// One simple link. Showing the day's notes, routines and birthdays (handy for a babysitter) makes it a
+// "babysitter" link in the database; otherwise it's a plain read-only link.
+const LENGTHS: { hours: number; label: string }[] = [
+  { hours: 12, label: "Tonight" },
+  { hours: 72, label: "3 days" },
+  { hours: 168, label: "A week" },
+  { hours: 24 * 31, label: "A month" },
+  { hours: 24 * 183, label: "6 months" },
+  { hours: 24 * 365, label: "A year" },
+];
 
 /** Parents make a read-only link for a babysitter, a grandparent or anyone outside the family */
 export function ShareDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { family, members, isParent } = useFamilyState();
   const qc = useQueryClient();
   const shares = useShares(isParent && open);
-  const [kind, setKind] = useState<Kind>("babysitter");
   const [name, setName] = useState("");
-  const [hours, setHours] = useState(12);
+  const [hours, setHours] = useState(168);
   const [people, setPeople] = useState<string[]>([]);
-  const [notes, setNotes] = useState(true);
+  const [notes, setNotes] = useState(false);
   const [busy, setBusy] = useState(false);
   const [link, setLink] = useState<string | null>(null);
   const tz = family.timezone;
 
   useEffect(() => {
-    if (open) { setLink(null); setName(""); setKind("babysitter"); setHours(12); setPeople([]); setNotes(true); }
+    if (open) { setLink(null); setName(""); setHours(168); setPeople([]); setNotes(false); }
   }, [open]);
 
   async function create() {
     setBusy(true);
     try {
       const { data, error } = await supabase.rpc("create_share", {
-        p_name: name.trim() || (kind === "babysitter" ? "Babysitter" : "Family"),
-        p_kind: kind, p_people: people, p_show_notes: kind === "babysitter" ? notes : false, p_hours: hours,
+        p_name: name.trim() || (notes ? "Babysitter" : "Family"),
+        p_kind: notes ? "babysitter" : "outside", p_people: people, p_show_notes: notes, p_hours: hours,
       });
       if (error) throw error;
       setLink(`${window.location.origin}/s/${data as string}`);
@@ -103,32 +99,23 @@ export function ShareDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         </div>
       ) : (
         <div className="space-y-5">
-          <Field label="Who is it for?">
-            <div className="flex flex-wrap gap-1.5">
-              <Chip on={kind === "babysitter"} onClick={() => { setKind("babysitter"); setHours(12); }}><Baby className="size-4" /> A babysitter</Chip>
-              <Chip on={kind === "outside"} onClick={() => { setKind("outside"); setHours(24 * 31); }}><Users className="size-4" /> Grandparents or family</Chip>
-            </div>
-          </Field>
-          <Field label="Name for the link" hint="Just for you, so you know which link is which.">
-            <Input value={name} maxLength={60} placeholder={kind === "babysitter" ? "e.g. Sophie, Saturday night" : "e.g. Grandad"} onChange={(e) => setName(e.target.value)} className="h-11" />
+          <Field label="Who is it for?" hint="Just for you, so you know which link is which.">
+            <Input value={name} maxLength={60} placeholder="e.g. Grandad, or Sophie the babysitter" onChange={(e) => setName(e.target.value)} className="h-11" />
           </Field>
           <Field label="How long should it work?">
             <div className="flex flex-wrap gap-1.5">
-              {LENGTHS[kind].map((l) => <Chip key={l.hours} on={hours === l.hours} onClick={() => setHours(l.hours)}>{l.label}</Chip>)}
+              {LENGTHS.map((l) => <Chip key={l.hours} on={hours === l.hours} onClick={() => setHours(l.hours)}>{l.label}</Chip>)}
             </div>
           </Field>
           <Field label="Whose things?" hint="Leave empty to show everyone. Things for the whole family always show.">
             <PeoplePicker members={members} value={people} onChange={setPeople} />
           </Field>
-          {kind === "babysitter" ? (
-            <label className="flex min-h-11 items-center justify-between gap-3 text-sm font-medium">
-              Show notes for the day
-              <Switch checked={notes} onCheckedChange={setNotes} />
-            </label>
-          ) : null}
+          <label className="flex min-h-11 items-center justify-between gap-3 text-sm font-medium">
+            <span>Show notes, routines and birthdays<span className="block text-xs font-normal text-muted-foreground">Handy for a babysitter</span></span>
+            <Switch checked={notes} onCheckedChange={setNotes} />
+          </label>
           <div className="rounded-2xl bg-muted/60 p-3 text-xs text-muted-foreground">
             Private events, reminders, photos, files and comments are never shown.
-            {kind === "babysitter" ? " Babysitter links also show bedtime and other routines, notes for the day and birthdays." : " Birthdays and notes are not shown."}
           </div>
           <Button className="h-11 w-full rounded-full sm:w-auto sm:px-8" onClick={create} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <><Link2 className="size-4" /> Make the link</>}

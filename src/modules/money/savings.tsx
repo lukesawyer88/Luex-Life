@@ -1,7 +1,7 @@
 // Savings goals, pots (Christmas, holidays), the cash envelope, and gift budgets per person for the year.
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Archive, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Gift, Pencil, PiggyBank, Plus, Trash2, X } from "lucide-react";
+import { Archive, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Gift, Landmark, Pencil, PiggyBank, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ import { JustMine, MineLock, parseAmount } from "./bill-parts";
 import {
   daysBetween, errMsg, money, refreshMoney, shortDate, todayIn, useGiftBudgets, usePayments, usePots, type GiftBudget, type Pot, type PotMove,
 } from "./data";
+import { Loans } from "./debts";
 import type { TabProps } from "./money-page";
 
 const KIND_LABEL: Record<Pot["kind"], string> = { goal: "Savings goal", pot: "Pot", cash: "Cash envelope" };
@@ -33,14 +34,15 @@ function perMonthToGoal(pot: Pot, balance: number, today: string): number | null
 }
 
 export function SavingsTab({ target }: TabProps) {
-  const [view, setView] = useState<"pots" | "gifts">("pots");
+  const [view, setView] = useState<"pots" | "gifts" | "loans">("pots");
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div className="flex gap-1.5">
-        <Chip on={view === "pots"} onClick={() => setView("pots")}><PiggyBank className="size-4" /> Savings and pots</Chip>
-        <Chip on={view === "gifts"} onClick={() => setView("gifts")}><Gift className="size-4" /> Gift budgets</Chip>
+      <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1">
+        <Chip on={view === "pots"} onClick={() => setView("pots")} className="shrink-0"><PiggyBank className="size-4" /> Savings and pots</Chip>
+        <Chip on={view === "gifts"} onClick={() => setView("gifts")} className="shrink-0"><Gift className="size-4" /> Gift budgets</Chip>
+        <Chip on={view === "loans"} onClick={() => setView("loans")} className="shrink-0"><Landmark className="size-4" /> Loans and cards</Chip>
       </div>
-      {view === "pots" ? <Pots potId={target.potId} /> : <Gifts />}
+      {view === "pots" ? <Pots potId={target.potId} /> : view === "gifts" ? <Gifts /> : <Loans />}
     </div>
   );
 }

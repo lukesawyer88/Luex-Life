@@ -11,6 +11,7 @@ import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { friendlyError } from "@/lib/family";
 import { supabase } from "@/lib/supabase";
@@ -43,6 +44,8 @@ function useOnline() {
 
 export function ShoppingTab({ target }: { target: FoodTarget; onGo: (t: FoodTarget) => void }) {
   const { family, me, members, role } = useFamilyState();
+  const showScan = useExtra("food.scan");
+  const showAssign = useExtra("food.assign");
   const adult = role !== "child";
   const qc = useQueryClient();
   const desktop = useDesktop();
@@ -258,7 +261,7 @@ export function ShoppingTab({ target }: { target: FoodTarget; onGo: (t: FoodTarg
           </p>
         ) : null}
 
-        <AddBar onAdd={(t) => void addItem(t)} onScan={() => setDialog("barcode")} known={known} existing={items} />
+        <AddBar onAdd={(t) => void addItem(t)} onScan={showScan ? () => setDialog("barcode") : undefined} known={known} existing={items} />
 
         {adult && !aisles.length && items.length > 0 ? (
           <button type="button" onClick={() => void setUpAisles()} className="flex min-h-11 items-center gap-2 rounded-xl bg-[var(--status-blue-soft)] px-3 text-left text-sm text-[var(--status-blue)]">
@@ -271,7 +274,7 @@ export function ShoppingTab({ target }: { target: FoodTarget; onGo: (t: FoodTarg
           {!shop.isLoading && !items.length ? (
             <div className="py-10 text-center">
               <p className="font-semibold">Nothing on this list yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Type something above, scan a barcode, or add the week's meals.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Type something above{showScan ? ", scan a barcode," : ""} or add the week's meals.</p>
               <Button variant="outline" className="mt-3 h-11 rounded-full" onClick={() => setDialog("week")}><CalendarPlus className="size-4" /> Add the week's meals</Button>
             </div>
           ) : null}
@@ -288,7 +291,7 @@ export function ShoppingTab({ target }: { target: FoodTarget; onGo: (t: FoodTarg
                     stockHint={inStock.get(nameKey(i.name))}
                     onTick={() => void tick(i)}
                     onOpen={() => setOpenItem(i.id)}
-                    member={members.find((m) => m.id === i.assignee)}
+                    member={showAssign ? members.find((m) => m.id === i.assignee) : undefined}
                     adder={i.added_by !== me.id ? members.find((m) => m.id === i.added_by)?.display_name : undefined}
                   />
                 ))}
@@ -354,7 +357,7 @@ function ItemRow({
   );
 }
 
-function AddBar({ onAdd, onScan, known, existing }: { onAdd: (t: string) => void; onScan: () => void; known: { name: string; favourite: boolean; used_count: number; last_used: string; name_key: string }[]; existing: ListItem[] }) {
+function AddBar({ onAdd, onScan, known, existing }: { onAdd: (t: string) => void; onScan?: () => void; known: { name: string; favourite: boolean; used_count: number; last_used: string; name_key: string }[]; existing: ListItem[] }) {
   const [text, setText] = useState("");
   const [focus, setFocus] = useState(false);
   const onList = useMemo(() => new Set(existing.filter((i) => !i.done_at).map((i) => nameKey(i.name))), [existing]);
@@ -384,7 +387,7 @@ function AddBar({ onAdd, onScan, known, existing }: { onAdd: (t: string) => void
           aria-label="Add to the list"
           enterKeyHint="done"
         />
-        <Button type="button" variant="outline" size="icon" className="size-12 shrink-0 rounded-full" onClick={onScan} aria-label="Scan a barcode"><ScanBarcode className="size-5" /></Button>
+        {onScan ? <Button type="button" variant="outline" size="icon" className="size-12 shrink-0 rounded-full" onClick={onScan} aria-label="Scan a barcode"><ScanBarcode className="size-5" /></Button> : null}
         <Button type="submit" className="h-12 shrink-0 rounded-full px-5 text-base font-semibold" disabled={!text.trim()}><Plus className="size-5" /> Add</Button>
       </form>
       {(focus || text) && suggestions.length ? (

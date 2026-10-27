@@ -4,6 +4,7 @@ import { Bell, BellOff, HardDrive, Loader2, Moon, ShieldCheck } from "lucide-rea
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { useExtra } from "@/lib/extras";
 import { MemberAvatar } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -143,6 +144,7 @@ function QuietHours({ s }: { s: BoardSettings }) {
 }
 
 function ChildSection({ child, s }: { child: Member; s: BoardSettings }) {
+  const journalOn = useExtra("board.journal");
   const save = useSave();
   const [time, setTime] = useState(hm(s.journal_time));
   useEffect(() => setTime(hm(s.journal_time)), [s.journal_time]);
@@ -164,13 +166,13 @@ function ChildSection({ child, s }: { child: Member; s: BoardSettings }) {
       {toggle("Parents can read their chats", "parents_can_read", s.parents_can_read,
         `On by default for under-13s. ${child.display_name} can always see whether this is on.`)}
       <QuietHours s={s} />
-      {toggle("Daily journal questions", "journal_prompts", s.journal_prompts)}
-      {s.journal_prompts ? (
+      {journalOn ? toggle("Daily journal questions", "journal_prompts", s.journal_prompts) : null}
+      {journalOn && s.journal_prompts ? (
         <div className="flex items-center gap-2 text-sm">
           Send at <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} onBlur={() => time && save(child.id, { journal_time: time })} className="h-11 w-32" aria-label="Journal question time" />
         </div>
       ) : null}
-      {toggle("Parents can see their journal", "journal_parents_see", s.journal_parents_see, "Private journal entries")}
+      {journalOn ? toggle("Parents can see their journal", "journal_parents_see", s.journal_parents_see, "Private journal entries") : null}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { friendlyError } from "@/lib/family";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
+import { useExtra } from "@/lib/extras";
 import { useDesktop } from "@/lib/use-desktop";
 import { cn } from "@/lib/utils";
 import { Sheet } from "@/modules/calendar/ui";
@@ -43,6 +44,7 @@ export function PlanTab({ target, onGo }: { target: FoodTarget; onGo: (t: FoodTa
   const [openId, setOpenId] = useState<string | null>(target.planId ?? null);
   const [add, setAdd] = useState<AddMealPreset | null>(null);
   const [ideas, setIdeas] = useState(false);
+  const showIdeas = useExtra("food.ideas");
 
   // requests waiting for a parent (any date from today), and a child's own requests
   const requests = useQuery({
@@ -111,8 +113,13 @@ export function PlanTab({ target, onGo }: { target: FoodTarget; onGo: (t: FoodTa
       onClose={() => setOpenId(null)}
       onOpen={(id) => setOpenId(id)}
     />
-  ) : (
+  ) : showIdeas ? (
     <MealIdeas recipes={recipes} stock={stock} onPick={(r) => setAdd({ day: today, slot: "dinner", recipe: r })} />
+  ) : (
+    <div className="flex h-full flex-col items-center justify-center p-4 text-center text-sm text-muted-foreground">
+      <UtensilsCrossed className="mb-2 size-6" />
+      <p>Tap a meal to see it here.</p>
+    </div>
   );
 
   return (
@@ -129,7 +136,7 @@ export function PlanTab({ target, onGo }: { target: FoodTarget; onGo: (t: FoodTa
           ) : (
             <Button className="h-10 rounded-full px-4 font-semibold" onClick={() => setAdd({ day: today, slot: "dinner", ask: true })}><Hand className="size-4" /> Ask for a dinner</Button>
           )}
-          {!desktop ? (
+          {!desktop && showIdeas ? (
             <Button variant="ghost" className="h-10 rounded-full px-3" onClick={() => setIdeas(true)}><Lightbulb className="size-4" /> Ideas</Button>
           ) : null}
         </div>

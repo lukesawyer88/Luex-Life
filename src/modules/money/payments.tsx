@@ -6,6 +6,7 @@ import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,8 @@ export function PaymentsTab({ target, onGo }: TabProps) {
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState<Filters>(() => ({ ...NO_FILTERS, category: target.categoryId ?? "" }));
   const [showFilters, setShowFilters] = useState(false);
+  // the detailed filters and reports are an extra (Settings, More features); search always shows
+  const reportsOn = useExtra("money.reports");
   const [editing, setEditing] = useState<Payment | null>(null);
   const [adding, setAdding] = useState(!!target.add);
   const [importing, setImporting] = useState(false);
@@ -120,7 +123,7 @@ export function PaymentsTab({ target, onGo }: TabProps) {
             <option value="custom">Choose dates</option>
           </select>
           <div className="ml-auto flex gap-1.5">
-            <Button data-testid="import-open" variant="outline" className="h-10 rounded-full px-3" onClick={() => setImporting(true)}><FileUp className="size-4" /><span className="hidden sm:inline">Import</span></Button>
+            <Button data-testid="import-open" variant="outline" className="h-10 rounded-full px-3" aria-label="Bring in a bank statement" onClick={() => setImporting(true)}><FileUp className="size-4" /><span className="hidden sm:inline">Bring in a bank statement</span></Button>
             <Button data-testid="payment-add" className="h-10 rounded-full px-4 font-semibold" onClick={() => setAdding(true)}><Plus className="size-4" /> Add</Button>
           </div>
         </div>
@@ -135,9 +138,11 @@ export function PaymentsTab({ target, onGo }: TabProps) {
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input data-testid="payments-search" className="h-10 rounded-full pl-9" placeholder="Search payments" value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
-          <Button data-testid="payments-filters" variant={activeFilters ? "default" : "outline"} className="h-10 rounded-full px-3" onClick={() => setShowFilters(true)}>
-            <SlidersHorizontal className="size-4" />{activeFilters ? ` ${activeFilters}` : <span className="hidden sm:inline">Filters</span>}
-          </Button>
+          {reportsOn ? (
+            <Button data-testid="payments-filters" variant={activeFilters ? "default" : "outline"} className="h-10 rounded-full px-3" onClick={() => setShowFilters(true)}>
+              <SlidersHorizontal className="size-4" />{activeFilters ? ` ${activeFilters}` : <span className="hidden sm:inline">Filters</span>}
+            </Button>
+          ) : null}
           {activeFilters ? <Button variant="ghost" size="icon" className="size-10 rounded-full" aria-label="Clear filters" onClick={() => setFilters(NO_FILTERS)}><X className="size-4" /></Button> : null}
         </div>
         <div className="grid grid-cols-2 gap-2" data-testid="payments-totals">
@@ -188,7 +193,7 @@ export function PaymentsTab({ target, onGo }: TabProps) {
             })}
           </ul>
         ) : <p className="text-sm text-muted-foreground">Nothing spent in these dates.</p>}
-        <Button variant="link" className="mt-3 h-auto p-0" onClick={() => onGo({ tab: "reports" })}>See reports</Button>
+        {reportsOn ? <Button variant="link" className="mt-3 h-auto p-0" onClick={() => onGo({ tab: "reports" })}>See reports</Button> : null}
       </DetailWindow>
 
       <Sheet open={showFilters} onOpenChange={setShowFilters} title="Filters"

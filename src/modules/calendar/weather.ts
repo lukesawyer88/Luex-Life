@@ -1,5 +1,7 @@
 // Weather for the family's town (Open-Meteo). Free plan for testing only: a paid plan is needed before launch.
 import { useQuery } from "@tanstack/react-query";
+
+import { useExtra } from "@/lib/extras";
 import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, Sun, type LucideIcon } from "lucide-react";
 
 export type DayWeather = { code: number; max: number; min: number; rain: number };
@@ -18,9 +20,11 @@ export function weatherLook(code: number): { icon: LucideIcon; label: string } {
 
 /** Up to 16 days ahead, by day key. Refreshed every 3 hours at most. */
 export function useWeather(lat: number | null | undefined, lon: number | null | undefined, tz: string) {
-  return useQuery({
+  // an extra: nothing is fetched or shown unless the household switched weather on
+  const on = useExtra("cal.weather");
+  const q = useQuery({
     queryKey: ["weather", lat, lon, tz],
-    enabled: lat != null && lon != null,
+    enabled: on && lat != null && lon != null,
     staleTime: 3 * 60 * 60 * 1000,
     gcTime: 6 * 60 * 60 * 1000,
     retry: 0,
@@ -42,6 +46,8 @@ export function useWeather(lat: number | null | undefined, lon: number | null | 
       return out;
     },
   });
+  // switched off: whatever was fetched earlier is not shown
+  return { data: on ? q.data : undefined, isLoading: on && q.isLoading };
 }
 
 export type Place = { name: string; detail: string; lat: number; lon: number };

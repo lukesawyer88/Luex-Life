@@ -1,5 +1,5 @@
-// Together: shared rewards everyone puts stars towards, up-for-grabs jobs anyone can claim, and (for grown-ups who
-// aren't parents) a way to give a child some money.
+// Jobs: up-for-grabs jobs anyone can claim, and (for grown-ups who aren't parents) a way to give a child some money.
+// Shared rewards everyone puts stars towards are an extra (More features), shown here when switched on.
 import { useQueryClient } from "@tanstack/react-query";
 import { Archive, BriefcaseBusiness, Camera, Check, Gift, Hand, Loader2, Pencil, Plus, Star, Trophy, Undo2, Users } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { Database } from "@/lib/database.types";
 import type { Member } from "@/lib/family";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { fitJpeg } from "@/lib/image";
 import { supabase } from "@/lib/supabase";
@@ -33,7 +34,9 @@ function readMoney(s: string, max = 10000): number | null {
 
 export function UsTab({ target }: TabProps) {
   const { role, members, me } = useFamilyState();
-  const [view, setView] = useState<"shared" | "jobs">(target.jobId ? "jobs" : "shared");
+  const sharedOn = useExtra("rewards.shared");
+  const [pick, setView] = useState<"shared" | "jobs">(target.jobId ? "jobs" : "shared");
+  const view = sharedOn ? pick : "jobs";
   const [gift, setGift] = useState(false);
   const balances = useBalances();
   const myStars = balances.data?.get(me.id)?.stars ?? 0;
@@ -43,8 +46,10 @@ export function UsTab({ target }: TabProps) {
     <Windows>
       <RecordsWindow className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Chip on={view === "shared"} onClick={() => setView("shared")}><Trophy className="size-4" /> Shared rewards</Chip>
-          <Chip on={view === "jobs"} onClick={() => setView("jobs")}><BriefcaseBusiness className="size-4" /> Up-for-grabs jobs</Chip>
+          {sharedOn ? <>
+            <Chip on={view === "shared"} onClick={() => setView("shared")}><Trophy className="size-4" /> Shared rewards</Chip>
+            <Chip on={view === "jobs"} onClick={() => setView("jobs")}><BriefcaseBusiness className="size-4" /> Up-for-grabs jobs</Chip>
+          </> : null}
           {role === "member" && children.length ? (
             <Button data-testid="gift-open" variant="outline" className="ml-auto h-10 rounded-full" onClick={() => setGift(true)}><Gift className="size-4" /> Give a child some money</Button>
           ) : null}
@@ -55,7 +60,7 @@ export function UsTab({ target }: TabProps) {
         <h3 className="mb-2 flex items-center gap-2 text-sm font-bold"><Star className="size-4" /> Your stars</h3>
         <p className="text-3xl font-bold tabular-nums">{myStars}</p>
         <div className="mt-4 space-y-2 text-sm">
-          <p><b>Shared rewards:</b> everyone in it puts stars in. When the stars add up, it's reached.</p>
+          {sharedOn ? <p><b>Shared rewards:</b> everyone in it puts stars in. When the stars add up, it's reached.</p> : null}
           <p><b>Up-for-grabs jobs:</b> the first to say "I'll do it" gets it. The person who set it up checks it, then it's paid.</p>
         </div>
       </DetailWindow>
@@ -416,6 +421,7 @@ function EditJob({ value, onClose }: { value: RewardJob | "new" | null; onClose:
   const [stars, setStars] = useState("");
   const [people, setPeople] = useState<string[]>([]);
   const [photo, setPhoto] = useState(false);
+  const photosOn = useExtra("rewards.photos");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -495,11 +501,13 @@ function EditJob({ value, onClose }: { value: RewardJob | "new" | null; onClose:
         <Field label="Who can do it?" hint={people.length ? "Only these people can claim it." : "Nobody picked: anyone in the household."}>
           <PeoplePicker members={members.filter((x) => !x.archived_at)} value={people} onChange={setPeople} />
         </Field>
-        <label className="flex min-h-10 items-center justify-between gap-3 text-sm font-semibold">
-          <span className="flex items-center gap-2"><Camera className="size-4" /> Needs a photo to show it's done</span>
-          <Switch data-testid="job-needs-photo" checked={photo} onCheckedChange={setPhoto} />
-        </label>
-        <p className="text-xs text-muted-foreground">Photos are deleted once the job is checked and paid.</p>
+        {photosOn ? <>
+          <label className="flex min-h-10 items-center justify-between gap-3 text-sm font-semibold">
+            <span className="flex items-center gap-2"><Camera className="size-4" /> Needs a photo to show it's done</span>
+            <Switch data-testid="job-needs-photo" checked={photo} onCheckedChange={setPhoto} />
+          </label>
+          <p className="text-xs text-muted-foreground">Photos are deleted once the job is checked and paid.</p>
+        </> : null}
       </div>
     </Sheet>
   );
@@ -512,6 +520,7 @@ function GiftSheet({ open, onClose, kids }: { open: boolean; onClose: () => void
   const [who, setWho] = useState<string[]>([]);
   const [amount, setAmount] = useState("");
   const [kind, setKind] = useState<"gift" | "birthday">("gift");
+  const birthdayOn = useExtra("rewards.toothfairy");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (open) { setWho(kids.length === 1 ? [kids[0].id] : []); setAmount(""); setKind("gift"); setNote(""); } }, [open, kids]);
@@ -556,12 +565,12 @@ function GiftSheet({ open, onClose, kids }: { open: boolean; onClose: () => void
             <Input data-testid="gift-amount" inputMode="decimal" value={amount} placeholder="0.00" className="h-14 w-36 text-2xl font-bold" onChange={(e) => setAmount(e.target.value)} />
           </div>
         </Field>
-        <Field label="What for?">
+        {birthdayOn ? <Field label="What for?">
           <div className="flex gap-1.5">
             <Chip on={kind === "gift"} onClick={() => setKind("gift")}><Gift className="size-4" /> A gift</Chip>
             <Chip on={kind === "birthday"} onClick={() => setKind("birthday")}><Users className="size-4" /> Birthday</Chip>
           </div>
-        </Field>
+        </Field> : null}
         <Field label="Note (optional)">
           <Input value={note} maxLength={120} placeholder="e.g. For being a star" className="h-11" onChange={(e) => setNote(e.target.value)} />
         </Field>

@@ -7,6 +7,7 @@ import { ColourPicker } from "@/components/colour-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useExtra } from "@/lib/extras";
 import { friendlyError } from "@/lib/family";
 import { useFamilyState } from "@/lib/family-context";
 import { pushState, turnPushOff, turnPushOn, type PushState } from "@/lib/push";
@@ -24,11 +25,12 @@ const SELECT = "h-11 w-full rounded-md border border-input bg-background px-3 te
 
 export function CalendarSettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { isParent } = useFamilyState();
+  const weatherOn = useExtra("cal.weather");
   const [section, setSection] = useState<Section>("alerts");
   const items: { key: Section; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: "alerts", label: "Notifications", icon: Bell },
     { key: "look", label: "Colours and names", icon: Palette },
-    ...(isParent ? [{ key: "home" as const, label: "Home town", icon: Home }] : []),
+    ...(isParent ? [{ key: "home" as const, label: weatherOn ? "Home town" : "Time zone", icon: Home }] : []),
     { key: "terms", label: "School terms", icon: School },
     { key: "places", label: "Places", icon: MapPin },
     ...(isParent ? [{ key: "imports" as const, label: "Import calendars", icon: Download }] : []),
@@ -244,6 +246,7 @@ const ZONES = [
 
 function HomeSection() {
   const { family } = useFamilyState();
+  const weatherOn = useExtra("cal.weather");
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [found, setFound] = useState<Town[] | null>(null);
@@ -275,6 +278,7 @@ function HomeSection() {
 
   return (
     <div className="space-y-5">
+      {weatherOn ? (
       <Field label="Home town" hint="Used to show the weather on each day.">
         {family.weather_place ? (
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -302,6 +306,7 @@ function HomeSection() {
           </div>
         ) : null}
       </Field>
+      ) : null}
       <Field label="Time zone" hint="Everyone in the family sees times in this zone.">
         <select value={family.timezone} onChange={(e) => save({ timezone: e.target.value })} className={SELECT} aria-label="Time zone">
           {ZONES.some(([z]) => z === family.timezone) ? null : <option value={family.timezone}>{family.timezone}</option>}

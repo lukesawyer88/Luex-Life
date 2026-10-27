@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { friendlyError } from "@/lib/family";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { fitJpeg } from "@/lib/image";
 import { supabase } from "@/lib/supabase";
@@ -65,6 +66,10 @@ export function PaymentSheet({ open, onOpenChange, payment, preset }: { open: bo
   const [day, setDay] = useState(today);
   const [payee, setPayee] = useState("");
   const [note, setNote] = useState("");
+  // extras (Settings, More features): other currencies, child costs and receipt photos
+  const currencyOn = useExtra("money.currency");
+  const childOn = useExtra("money.childcosts");
+  const receiptsOn = useExtra("money.receipts");
   const [currency, setCurrency] = useState("GBP");
   const [rate, setRate] = useState<number | null | "loading">(1);
   const [gbpTyped, setGbpTyped] = useState("");
@@ -345,12 +350,14 @@ export function PaymentSheet({ open, onOpenChange, payment, preset }: { open: bo
         {more ? (
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Currency">
-                <select data-testid="payment-currency" className={SELECT} value={currency} disabled={fromFood} onChange={(e) => setCurrency(e.target.value)}>
-                  {(CURRENCIES.includes(currency) ? CURRENCIES : [currency, ...CURRENCIES]).map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </Field>
-              {children.length ? (
+              {currencyOn || currency !== "GBP" ? (
+                <Field label="Currency">
+                  <select data-testid="payment-currency" className={SELECT} value={currency} disabled={fromFood} onChange={(e) => setCurrency(e.target.value)}>
+                    {(CURRENCIES.includes(currency) ? CURRENCIES : [currency, ...CURRENCIES]).map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Field>
+              ) : null}
+              {children.length && (childOn || childId) ? (
                 <Field label="For a child (optional)">
                   <select data-testid="payment-child" className={SELECT} value={childId ?? ""} onChange={(e) => setChildId(e.target.value || null)}>
                     <option value="">No</option>
@@ -392,7 +399,7 @@ export function PaymentSheet({ open, onOpenChange, payment, preset }: { open: bo
               <Switch data-testid="payment-not-in-budget" checked={!inBudget} onCheckedChange={(v) => setInBudget(!v)} />
             </label>
 
-            <Field label="Receipt (optional)">
+            {receiptsOn || localUrl || receiptUrl ? <Field label="Receipt (optional)">
               <input ref={fileRef} data-testid="payment-receipt" type="file" accept="image/*" capture="environment" className="hidden"
                 onChange={async (e) => {
                   const f = e.target.files?.[0];
@@ -409,7 +416,7 @@ export function PaymentSheet({ open, onOpenChange, payment, preset }: { open: bo
               ) : (
                 <Button variant="outline" className="h-11 rounded-full" onClick={() => fileRef.current?.click()}><Camera className="size-4" /> Add a photo</Button>
               )}
-            </Field>
+            </Field> : null}
           </div>
         ) : null}
       </div>

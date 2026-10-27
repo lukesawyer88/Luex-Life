@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useExtra } from "@/lib/extras";
 import { friendlyError, type Member } from "@/lib/family";
 import { fitJpeg } from "@/lib/image";
 import { useFamilyState } from "@/lib/family-context";
@@ -405,6 +406,7 @@ function describeRepeat(rule: string, startK: string) {
 
 function ChoreEditor({ chore, onClose }: { chore: Chore | "new" | null; onClose: () => void }) {
   const { family, members } = useFamilyState();
+  const photosOn = useExtra("rewards.photos");
   const qc = useQueryClient();
   const today = todayKey(family.timezone);
   const open = chore !== null;
@@ -442,7 +444,7 @@ function ChoreEditor({ chore, onClose }: { chore: Chore | "new" | null; onClose:
       const row = {
         title: f.title.trim(), icon: f.icon, rrule: toRule(f.repeat, f.days, f.startsOn), starts_on: f.startsOn, mode: f.mode,
         people: f.people, part_of_day: f.part, needs_confirm: f.confirm, stars: Math.max(0, Math.min(10, f.stars)),
-        notes: f.notes.trim() || null, is_cleaning: f.cleaning, active: f.active, money: pay, needs_photo: f.photo,
+        notes: f.notes.trim() || null, is_cleaning: f.cleaning, active: f.active, money: pay, needs_photo: photosOn ? f.photo : false,
       };
       const { error } = existing
         ? await supabase.from("chores").update(row).eq("id", existing.id)
@@ -566,10 +568,12 @@ function ChoreEditor({ chore, onClose }: { chore: Chore | "new" | null; onClose:
           </div>
         </Field>
 
+        {photosOn ? (
         <label className="flex min-h-10 items-center justify-between gap-3 text-sm font-semibold">
           <span className="flex items-center gap-2"><Camera className="size-4" /> Needs a photo to show it's done</span>
           <Switch data-testid="chore-photo" checked={f.photo} onCheckedChange={(v) => set("photo", v)} />
         </label>
+        ) : null}
         <label className="flex min-h-10 items-center justify-between gap-3 text-sm font-semibold">
           A parent checks it before it counts
           <Switch checked={f.confirm} onCheckedChange={(v) => set("confirm", v)} />

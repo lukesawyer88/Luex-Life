@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useExtra } from "@/lib/extras";
 import { friendlyError } from "@/lib/family";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
@@ -32,6 +33,7 @@ type Props = {
 
 /** One day: weather, school term, countdowns, the handover note, what's on and today's jobs */
 export function DayPanel({ dayK, occs, terms, weather, onOpen, onAdd, onTab, compact, hideTitle }: Props) {
+  const handover = useExtra("cal.handover");
   const { family, me, role } = useFamilyState();
   const tz = family.timezone;
   const today = todayKey(tz);
@@ -67,7 +69,7 @@ export function DayPanel({ dayK, occs, terms, weather, onOpen, onAdd, onTab, com
 
       {dayK === today && !compact ? <Countdowns /> : null}
 
-      <HandoverNote dayK={dayK} />
+      {handover ? <HandoverNote dayK={dayK} /> : null}
 
       {!compact ? (
         <div>
@@ -99,6 +101,11 @@ export function DayPanel({ dayK, occs, terms, weather, onOpen, onAdd, onTab, com
 
 /** "12 sleeps to Christmas" and any events marked with a countdown */
 export function Countdowns() {
+  const on = useExtra("cal.countdowns");
+  return on ? <CountdownList /> : null;
+}
+
+function CountdownList() {
   const { family } = useFamilyState();
   const today = todayKey(family.timezone);
   const { occs } = useOccurrences(today, addDays(today, 120), []);

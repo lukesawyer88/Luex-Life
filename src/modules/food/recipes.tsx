@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { friendlyError } from "@/lib/family";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
+import { useExtra } from "@/lib/extras";
 import { useDesktop } from "@/lib/use-desktop";
 import { cn } from "@/lib/utils";
 import { Chip, Empty, Field, Sheet } from "@/modules/calendar/ui";
@@ -36,6 +37,9 @@ export function RecipesTab({ target }: { target: FoodTarget; onGo: (t: FoodTarge
   const recipes = q.data?.recipes ?? [];
   const ratings = q.data?.ratings ?? [];
   const collections = q.data?.collections ?? [];
+  const showScan = useExtra("food.scan");
+  const showCollections = useExtra("food.collections");
+  const showRatings = useExtra("food.ratings");
 
   const [openId, setOpenId] = useState<string | null>(target.recipeId ?? null);
   const [search, setSearch] = useState("");
@@ -113,7 +117,7 @@ export function RecipesTab({ target }: { target: FoodTarget; onGo: (t: FoodTarge
           <DropdownMenuContent align="end" className="w-60">
             <DropdownMenuItem onSelect={() => setEditor({ open: true, draft: null })}><Pencil className="mr-2 size-4" /> Type it in</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setSheet("link")}><Link2 className="mr-2 size-4" /> From a website link</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSheet("scan")}><Camera className="mr-2 size-4" /> Scan a cookbook page</DropdownMenuItem>
+            {showScan ? <DropdownMenuItem onSelect={() => setSheet("scan")}><Camera className="mr-2 size-4" /> Scan a cookbook page</DropdownMenuItem> : null}
           </DropdownMenuContent>
         </DropdownMenu>
         <DropdownMenu>
@@ -121,17 +125,19 @@ export function RecipesTab({ target }: { target: FoodTarget; onGo: (t: FoodTarge
             <Button variant="ghost" size="icon" className="size-11 rounded-full" aria-label="More recipe box options"><MoreHorizontal className="size-5" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-60">
-            <DropdownMenuItem onSelect={() => setSheet("collections")}><FolderPlus className="mr-2 size-4" /> Collections</DropdownMenuItem>
-            <DropdownMenuSeparator />
+            {showCollections ? <DropdownMenuItem onSelect={() => setSheet("collections")}><FolderPlus className="mr-2 size-4" /> Collections</DropdownMenuItem> : null}
+            {showCollections ? <DropdownMenuSeparator /> : null}
             <DropdownMenuItem disabled={!recipes.length} onSelect={() => void exportAll()}><FileDown className="mr-2 size-4" /> Save all recipes as a PDF</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
-        <Chip on={!coll} onClick={() => setColl(null)}>All</Chip>
-        {collections.map((c) => <Chip key={c.id} on={coll === c.id} onClick={() => setColl(coll === c.id ? null : c.id)}>{c.emoji ? `${c.emoji} ` : ""}{c.title}</Chip>)}
-      </div>
+      {showCollections ? (
+        <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+          <Chip on={!coll} onClick={() => setColl(null)}>All</Chip>
+          {collections.map((c) => <Chip key={c.id} on={coll === c.id} onClick={() => setColl(coll === c.id ? null : c.id)}>{c.emoji ? `${c.emoji} ` : ""}{c.title}</Chip>)}
+        </div>
+      ) : null}
       <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -143,7 +149,7 @@ export function RecipesTab({ target }: { target: FoodTarget; onGo: (t: FoodTarge
             {TIMES.map((t) => <DropdownMenuItem key={t} onSelect={() => setMaxTime(t)}>{t ? `Up to ${t} minutes` : "Any time"}</DropdownMenuItem>)}
           </DropdownMenuContent>
         </DropdownMenu>
-        {children.size ? <Chip on={kidsLove} onClick={() => setKidsLove((x) => !x)}><ThumbsUp className="size-4" /> Loved by the kids</Chip> : null}
+        {showRatings && children.size ? <Chip on={kidsLove} onClick={() => setKidsLove((x) => !x)}><ThumbsUp className="size-4" /> Loved by the kids</Chip> : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className={cn("inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium", safeFor ? "border-transparent bg-[var(--tile-active)] text-[var(--tile-active-fg)]" : "border-[var(--surface-border)] bg-[var(--surface)]")}>
@@ -163,7 +169,7 @@ export function RecipesTab({ target }: { target: FoodTarget; onGo: (t: FoodTarge
       <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto pr-1">
         {q.isLoading ? <p className="p-4 text-sm text-muted-foreground">Loading recipes…</p> : null}
         {!q.isLoading && !recipes.length ? (
-          <Empty icon={BookOpen} title="No recipes yet">Add your family favourites: type them in, bring one in from a website, or scan a cookbook page.</Empty>
+          <Empty icon={BookOpen} title="No recipes yet">Add your family favourites: type them in or bring one in from a website{showScan ? ", or scan a cookbook page" : ""}.</Empty>
         ) : null}
         {recipes.length && !shown.length ? <p className="p-4 text-sm text-muted-foreground">No recipes match. Try fewer filters.</p> : null}
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-3">
@@ -180,7 +186,7 @@ export function RecipesTab({ target }: { target: FoodTarget; onGo: (t: FoodTarge
                     <span className="line-clamp-2 font-semibold leading-snug">{r.title}</span>
                     <span className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
                       {mins ? <span className="inline-flex items-center gap-0.5"><Clock className="size-3.5" />{mins} min</span> : null}
-                      {t?.up ? <span className="inline-flex items-center gap-0.5"><ThumbsUp className="size-3.5" />{t.up}</span> : null}
+                      {showRatings && t?.up ? <span className="inline-flex items-center gap-0.5"><ThumbsUp className="size-3.5" />{t.up}</span> : null}
                     </span>
                   </span>
                 </button>

@@ -1,4 +1,5 @@
-// History: every star and every penny for one person, day by day, with what they had after each one. Export to CSV or PDF.
+// History: every star and every penny for one person, day by day, with what they had after each one. Export to CSV
+// (and PDF when that extra is switched on).
 import { FileDown, FileText, History, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -7,6 +8,7 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { cn } from "@/lib/utils";
 import { Empty } from "@/modules/calendar/ui";
@@ -19,6 +21,7 @@ import type { TabProps } from "./rewards-page";
 
 export function HistoryTab({ target }: TabProps) {
   const { family, me, members, isParent } = useFamilyState();
+  const pdfOn = useExtra("rewards.pdf");
   const today = todayIn(family.timezone);
   const people = members.filter((m) => !m.archived_at && (m.id === me.id || (isParent && m.role === "child")));
   const [who, setWho] = useState(target.memberId && people.some((p) => p.id === target.memberId) ? target.memberId : me.id);
@@ -86,8 +89,8 @@ export function HistoryTab({ target }: TabProps) {
           <div className="ml-auto flex gap-1.5">
             <Button data-testid="history-csv" variant="outline" className="h-10 rounded-full" disabled={!lines.length}
               onClick={() => historyCsv(lines, `${fileBase}.csv`)}><FileDown className="size-4" /> CSV</Button>
-            <Button data-testid="history-pdf" variant="outline" className="h-10 rounded-full" disabled={!lines.length}
-              onClick={() => void historyPdf(lines, person.display_name, from, to, `${fileBase}.pdf`).catch(() => toast.error("The PDF couldn't be made. Try again"))}><FileText className="size-4" /> PDF</Button>
+            {pdfOn ? <Button data-testid="history-pdf" variant="outline" className="h-10 rounded-full" disabled={!lines.length}
+              onClick={() => void historyPdf(lines, person.display_name, from, to, `${fileBase}.pdf`).catch(() => toast.error("The PDF couldn't be made. Try again"))}><FileText className="size-4" /> PDF</Button> : null}
           </div>
         </div>
 

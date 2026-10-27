@@ -1,33 +1,38 @@
 // Money settings: the budget period, the weekly summary, accounts, categories and remembered payees.
 import { useQueryClient } from "@tanstack/react-query";
-import { Archive, Lock, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, FileSpreadsheet, Lock, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Chip, Field, Sheet } from "@/modules/calendar/ui";
 
 import {
-  ACCOUNT_KIND_LABEL, CURRENCIES, errMsg, refreshMoney, todayIn,
-  useAccounts, useCategories, useMoneySettings, usePayeeRules,
+  ACCOUNT_KIND_LABEL, CURRENCIES, errMsg, fetchPayments, refreshMoney, todayIn,
+  useAccounts, useBills, useCategories, useMoneySettings, usePayeeRules,
   type Account, type Category,
 } from "./data";
+import { paymentsCsv } from "./report-export";
 
 const select = "h-11 w-full rounded-md border border-input bg-background px-3 text-base md:text-sm";
 
 export function MoneySettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  // remembered payees are part of the detailed reports extra (Settings, More features)
+  const payeesOn = useExtra("money.reports");
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Money settings" description="Only parents can see Money." wide>
       <div className="space-y-7">
         <PeriodSection />
         <AccountsSection />
         <CategoriesSection />
-        <PayeesSection />
+        {payeesOn ? <PayeesSection /> : null}
+        <DownloadSection />
       </div>
     </Sheet>
   );
@@ -58,6 +63,7 @@ function useRun() {
 // ---------------------------------------------------------------- period and summary
 
 function PeriodSection() {
+  const fourOn = useExtra("money.fourweekly");
   const { family } = useFamilyState();
   const s = useMoneySettings().data;
   const { busy, run } = useRun();
@@ -89,7 +95,7 @@ function PeriodSection() {
       <div className="flex flex-wrap gap-1.5">
         <Chip on={kind === "month"} onClick={() => setKind("month")}>On the 1st</Chip>
         <Chip on={kind === "payday"} onClick={() => setKind("payday")}>On payday</Chip>
-        <Chip on={kind === "four"} onClick={() => setKind("four")}>Paid every 4 weeks</Chip>
+        {fourOn || kind === "four" ? <Chip on={kind === "four"} onClick={() => setKind("four")}>Paid every 4 weeks</Chip> : null}
       </div>
       {kind === "payday" ? (
         <div className="mt-3"><Field label="Payday (day of the month)" hint="If the month is shorter, the last day is used."><Input inputMode="numeric" value={day} onChange={(e) => setDay(e.target.value)} className="h-11 w-24" data-testid="settings-payday" /></Field></div>
@@ -147,6 +153,7 @@ function AccountEditor({ a, onDone }: { a?: Account; onDone: () => void }) {
   const { busy, run } = useRun();
   const [name, setName] = useState(a?.name ?? "");
   const [kind, setKind] = useState<Account["kind"]>(a?.kind ?? "current");
+  const currencyOn = useExtra("money.currency");
   const [currency, setCurrency] = useState(a?.currency ?? "GBP");
   const [opening, setOpening] = useState(a ? String(Number(a.opening_balance)) : "");
   const [owner, setOwner] = useState<string>(a?.owner ?? "");
@@ -175,9 +182,11 @@ function AccountEditor({ a, onDone }: { a?: Account; onDone: () => void }) {
         </div>
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Currency">
-          <select className={select} value={currency} onChange={(e) => setCurrency(e.target.value)}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select>
-        </Field>
+        {currencyOn || currency !== "GBP" ? (
+          <Field label="Currency">
+            <select className={select} value={currency} onChange={(e) => setCurrency(e.target.value)}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select>
+          </Field>
+        ) : null}
         <Field label="Starting balance"><Input inputMode="decimal" value={opening} onChange={(e) => setOpening(e.target.value)} placeholder="0.00" className="h-11" /></Field>
       </div>
       {kind !== "joint" ? (
@@ -239,6 +248,7 @@ function CategoriesSection() {
 }
 
 function CategoryRow({ c }: { c: Category }) {
+  const carryOn = useExtra("money.carry");
   const { busy, run } = useRun();
   const [name, setName] = useState(c.name);
   const [emoji, setEmoji] = useState(c.emoji ?? "");
@@ -254,7 +264,7 @@ function CategoryRow({ c }: { c: Category }) {
     <li className={cn("flex min-h-12 items-center gap-2 rounded-2xl bg-[var(--surface)] px-2", c.archived_at && "opacity-60")} data-testid={`settings-cat-${c.name}`}>
       <Input value={emoji} onChange={(e) => setEmoji(e.target.value)} onBlur={saveText} className="h-10 w-12 px-1 text-center" aria-label={`Picture for ${c.name}`} />
       <Input value={name} onChange={(e) => setName(e.target.value)} onBlur={saveText} maxLength={40} className="h-10 min-w-0 flex-1" aria-label="Category name" />
-      {c.direction === "out" && !c.archived_at ? (
+      {carryOn && c.direction === "out" && !c.archived_at ? (
         <label className="flex shrink-0 items-center gap-1.5 text-xs">
           <span className="hidden sm:inline">Carry over</span>
           <Switch checked={c.carry_over} disabled={busy} onCheckedChange={(v) => void run(supabase.from("money_categories").update({ carry_over: v }).eq("id", c.id))} aria-label={`Carry over ${c.name}`} />
@@ -288,6 +298,37 @@ function AddCategory({ dir }: { dir: "out" | "in" }) {
       <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={dir === "out" ? "New category, e.g. Swimming lessons" : "New category, e.g. Rent from lodger"} maxLength={40} className="h-11 min-w-0 flex-1" data-testid="settings-cat-new" />
       <Button type="submit" className="h-11 rounded-full" disabled={busy || !name.trim()} data-testid="settings-cat-add">Add</Button>
     </form>
+  );
+}
+
+// ---------------------------------------------------------------- download everything
+
+function DownloadSection() {
+  const { family, members } = useFamilyState();
+  const cats = useCategories().data ?? [];
+  const accounts = useAccounts().data ?? [];
+  const bills = useBills().data ?? [];
+  const [busy, setBusy] = useState(false);
+  async function download() {
+    setBusy(true);
+    try {
+      const today = todayIn(family.timezone);
+      const list = await fetchPayments(family.id, "2000-01-01", today);
+      paymentsCsv(list, { cats, accounts, bills, members }, `Luex money to ${today}.csv`);
+    } catch (e) {
+      toast.error(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section>
+      <h3 className="text-base font-bold">Download</h3>
+      <p className="mb-3 text-sm text-muted-foreground">Every payment you can see, as a spreadsheet.</p>
+      <Button variant="outline" className="h-11 rounded-full" disabled={busy} onClick={() => void download()} data-testid="money-download-csv">
+        <FileSpreadsheet className="size-4" /> {busy ? "Saving…" : "Download all payments (CSV)"}
+      </Button>
+    </section>
   );
 }
 

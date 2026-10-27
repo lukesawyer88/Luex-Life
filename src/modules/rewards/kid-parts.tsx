@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,12 @@ import {
 import { addPocket, tickHabit } from "./outbox";
 
 export const POT_EMOJI: Record<Pot, string> = { spend: "👛", save: "🐷", give: "💝" };
+
+/** The pots shown: spend and save, plus give when that extra is on (or it still holds money) */
+export function useShownPots(give = 0): Pot[] {
+  const giveOn = useExtra("rewards.give");
+  return giveOn || give !== 0 ? ["spend", "save", "give"] : ["spend", "save"];
+}
 
 /** Parse a typed amount ("£1.50", "12") into a number; null when it isn't one */
 export function parseAmount(s: string): number | null {
@@ -38,9 +45,10 @@ export function NativeSelect({ className, children, ...rest }: SelectHTMLAttribu
 
 /** Three pots side by side */
 export function PotTiles({ spend, save, give, big, testPrefix }: { spend: number; save: number; give: number; big?: boolean; testPrefix?: string }) {
-  const vals: [Pot, number][] = [["spend", spend], ["save", save], ["give", give]];
+  const shown = useShownPots(give);
+  const vals: [Pot, number][] = ([["spend", spend], ["save", save], ["give", give]] as [Pot, number][]).filter(([p]) => shown.includes(p));
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className={cn("grid gap-2", vals.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
       {vals.map(([p, v]) => (
         <div key={p} className="glass-tile min-w-0 p-2 text-center" data-testid={testPrefix ? `${testPrefix}-${p}` : undefined}>
           <div className={big ? "text-3xl" : "text-xl"} aria-hidden>{POT_EMOJI[p]}</div>
@@ -92,6 +100,7 @@ export function EntrySheet({
 }: { value: EntryKind | null; onClose: () => void; memberId: string; name: string; allowPot?: boolean }) {
   const { family } = useFamilyState();
   const qc = useQueryClient();
+  const pots = useShownPots();
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [pot, setPot] = useState<Pot>("spend");
@@ -135,7 +144,7 @@ export function EntrySheet({
         {allowPot ? (
           <Field label={["spend", "cash", "deduction"].includes(kind) ? "From which pot" : "Into which pot"}>
             <div className="flex flex-wrap gap-2">
-              {(["spend", "save", "give"] as Pot[]).map((p) => <Chip key={p} on={pot === p} onClick={() => setPot(p)}>{POT_EMOJI[p]} {POT_LABEL[p]}</Chip>)}
+              {pots.map((p) => <Chip key={p} on={pot === p} onClick={() => setPot(p)}>{POT_EMOJI[p]} {POT_LABEL[p]}</Chip>)}
             </div>
           </Field>
         ) : null}
@@ -153,6 +162,7 @@ export function MoveSheet({ open, onClose, memberId, balances, fromOnly }: {
 }) {
   const { family } = useFamilyState();
   const qc = useQueryClient();
+  const pots = useShownPots(balances.give);
   const [from, setFrom] = useState<Pot>("spend");
   const [to, setTo] = useState<Pot>("save");
   const [amount, setAmount] = useState("");
@@ -182,13 +192,13 @@ export function MoveSheet({ open, onClose, memberId, balances, fromOnly }: {
         {!fromOnly ? (
           <Field label="From">
             <div className="flex flex-wrap gap-2">
-              {(["spend", "save", "give"] as Pot[]).map((p) => <Chip key={p} on={from === p} onClick={() => setFrom(p)}>{POT_EMOJI[p]} {POT_LABEL[p]} · {money(balances[p])}</Chip>)}
+              {pots.map((p) => <Chip key={p} on={from === p} onClick={() => setFrom(p)}>{POT_EMOJI[p]} {POT_LABEL[p]} · {money(balances[p])}</Chip>)}
             </div>
           </Field>
         ) : <p className="text-sm">From <b>{POT_LABEL[fromOnly]}</b> ({money(balances[fromOnly])})</p>}
         <Field label="To">
           <div className="flex flex-wrap gap-2">
-            {(["spend", "save", "give"] as Pot[]).filter((p) => p !== from).map((p) => <Chip key={p} on={to === p} onClick={() => setTo(p)}>{POT_EMOJI[p]} {POT_LABEL[p]}</Chip>)}
+            {pots.filter((p) => p !== from).map((p) => <Chip key={p} on={to === p} onClick={() => setTo(p)}>{POT_EMOJI[p]} {POT_LABEL[p]}</Chip>)}
           </div>
         </Field>
         <Field label="How much">

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyError } from "@/lib/family";
+import { useExtra } from "@/lib/extras";
 import { useFamilyState } from "@/lib/family-context";
 import { fitJpeg } from "@/lib/image";
 import { supabase } from "@/lib/supabase";
@@ -96,6 +97,9 @@ export function RecipeEditor({
   const { family, role } = useFamilyState();
   const qc = useQueryClient();
   const collections = useRecipes().data?.collections ?? [];
+  const showCollections = useExtra("food.collections");
+  const showNutrition = useExtra("food.nutrition");
+  const showTimeline = useExtra("food.seasonal");
   const [d, setD] = useState<RecipeDraft>(initial ?? emptyDraft());
   const [bulk, setBulk] = useState("");
   const [tagText, setTagText] = useState("");
@@ -287,7 +291,7 @@ export function RecipeEditor({
           </div>
         </Field>
 
-        {collections.length ? (
+        {showCollections && collections.length ? (
           <Field label="Collections">
             <div className="flex flex-wrap gap-1.5">
               {collections.map((c) => (
@@ -297,11 +301,13 @@ export function RecipeEditor({
           </Field>
         ) : null}
 
-        <Field label="Notes" hint={`For example: "Tom says less chilli"`}>
-          <Textarea value={d.notes} onChange={(e) => set("notes", e.target.value)} rows={2} maxLength={4000} />
-        </Field>
+        {showCollections ? (
+          <Field label="Notes" hint={`For example: "Tom says less chilli"`}>
+            <Textarea value={d.notes} onChange={(e) => set("notes", e.target.value)} rows={2} maxLength={4000} />
+          </Field>
+        ) : null}
 
-        {!isChild ? (
+        {showNutrition && !isChild ? (
           <section className="space-y-2">
             <Chip on={extras.nutrition} onClick={() => { const on = !extras.nutrition; setExtras((x) => ({ ...x, nutrition: on })); if (!on) set("nutrition", null); }}>Nutrition per serving (estimate)</Chip>
             {extras.nutrition ? (
@@ -316,7 +322,7 @@ export function RecipeEditor({
           </section>
         ) : null}
 
-        <section className="space-y-2">
+        {showTimeline ? <section className="space-y-2">
           <Chip on={extras.timeline} onClick={() => { const on = !extras.timeline; setExtras((x) => ({ ...x, timeline: on })); if (!on) set("timeline", null); else if (!d.timeline?.length) set("timeline", [{ before_min: 60, text: "" }]); }}>Cooking timeline (for a big meal like Christmas dinner)</Chip>
           {extras.timeline ? (
             <div className="space-y-2">
@@ -331,7 +337,7 @@ export function RecipeEditor({
               <Button variant="outline" className="h-10 rounded-full" onClick={() => set("timeline", [...(d.timeline ?? []), { before_min: 30, text: "" }])}><Plus className="size-4" /> Add a job</Button>
             </div>
           ) : null}
-        </section>
+        </section> : null}
 
         {d.source_url ? <p className="truncate text-xs text-muted-foreground">From {d.source_url}</p> : null}
       </div>

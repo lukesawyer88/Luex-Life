@@ -8,6 +8,7 @@ import {
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { useExtra } from "@/lib/extras";
 import { MemberAvatar } from "@/components/member-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +52,8 @@ export function MessageRow({
 }) {
   const { me, isParent, family } = useFamilyState();
   const qc = useQueryClient();
+  const pinOn = useExtra("board.pin");
+  const laterOn = useExtra("board.later");
   const mine = m.author === me.id;
   const author = members.find((x) => x.id === m.author);
   const replyTo = m.reply_to ? data.messages.find((x) => x.id === m.reply_to) : null;
@@ -116,7 +119,7 @@ export function MessageRow({
             ) : (
               <Body m={m} data={data} members={members} actions={actions} readOnly={readOnly || !canPostHere} />
             )}
-            {m.pinned_at && !removed ? <span className="mt-1 flex items-center gap-1 text-[11px] opacity-70"><Pin className="size-3" /> Pinned</span> : null}
+            {pinOn && m.pinned_at && !removed ? <span className="mt-1 flex items-center gap-1 text-[11px] opacity-70"><Pin className="size-3" /> Pinned</span> : null}
           </div>
           {!readOnly || canRemove || canRestore ? (
             <DropdownMenu>
@@ -136,9 +139,11 @@ export function MessageRow({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => actions.onReply(m)}><CornerUpLeft className="mr-2 size-4" /> Reply</DropdownMenuItem>
                     {canEdit ? <DropdownMenuItem onSelect={() => actions.onEdit(m)}><Pencil className="mr-2 size-4" /> Edit</DropdownMenuItem> : null}
-                    <DropdownMenuItem onSelect={() => void run(() => supabase.from("board_messages").update({ pinned_at: m.pinned_at ? null : new Date().toISOString() }).eq("id", m.id), m.pinned_at ? "Unpinned" : "Pinned")}>
-                      {m.pinned_at ? <><PinOff className="mr-2 size-4" /> Unpin</> : <><Pin className="mr-2 size-4" /> Pin</>}
-                    </DropdownMenuItem>
+                    {pinOn ? (
+                      <DropdownMenuItem onSelect={() => void run(() => supabase.from("board_messages").update({ pinned_at: m.pinned_at ? null : new Date().toISOString() }).eq("id", m.id), m.pinned_at ? "Unpinned" : "Pinned")}>
+                        {m.pinned_at ? <><PinOff className="mr-2 size-4" /> Unpin</> : <><Pin className="mr-2 size-4" /> Pin</>}
+                      </DropdownMenuItem>
+                    ) : null}
                   </>
                 ) : null}
                 {!removed && text ? (
@@ -147,7 +152,7 @@ export function MessageRow({
                 {!readOnly && !removed ? (
                   <>
                     <DropdownMenuItem onSelect={() => actions.onCalendar(m, false)}><CalendarPlus className="mr-2 size-4" /> Add to calendar</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => actions.onCalendar(m, true)}><BellRing className="mr-2 size-4" /> Remind me later</DropdownMenuItem>
+                    {laterOn ? <DropdownMenuItem onSelect={() => actions.onCalendar(m, true)}><BellRing className="mr-2 size-4" /> Remind me later</DropdownMenuItem> : null}
                     <DropdownMenuItem onSelect={() => actions.onList(m)}><ListPlus className="mr-2 size-4" /> Add to a list</DropdownMenuItem>
                   </>
                 ) : null}

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Bell, Heart, Images, ListChecks, MapPin, Megaphone, MessagesSquare, Play, Target } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { useExtra } from "@/lib/extras";
 import { MemberAvatar } from "@/components/member-avatar";
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { useFamilyState } from "@/lib/family-context";
@@ -67,8 +68,10 @@ export function BoardHome({ onGo }: { onGo: (t: BoardTarget) => void }) {
   const notes = <NotesBoard compact />;
   const photos = <PhotoStrip onGo={onGo} />;
   const chats = <LatestChats threads={threads.data ?? []} onGo={onGo} />;
-  const kudos = <KudosWall kudos={bits.data?.kudos ?? []} onGo={onGo} familyThreadId={familyThread?.id} />;
-  const goals = <GoalsSummary onGo={onGo} />;
+  const kudosOn = useExtra("board.kudos");
+  const goalsOn = useExtra("board.goals");
+  const kudos = kudosOn ? <KudosWall kudos={bits.data?.kudos ?? []} onGo={onGo} familyThreadId={familyThread?.id} /> : null;
+  const goals = goalsOn ? <GoalsSummary onGo={onGo} /> : null;
 
   return (
     <Windows>
@@ -114,12 +117,13 @@ function NeedsYou({ threads, bits, onGo }: { threads: ThreadInfo[]; bits?: Retur
   const { me, members } = useFamilyState();
   const lists = useLists();
   const goals = useGoals();
+  const goalsOn = useExtra("board.goals");
   const name = (id: string | null) => members.find((m) => m.id === id)?.display_name ?? "Someone";
 
   const unread = threads.filter((t) => t.mine && !t.muted && t.unread > 0);
   const myItems = (lists.data?.items ?? []).filter((i) => i.assignee === me.id && !i.done_at);
   const listOf = (id: string) => lists.data?.lists.find((l) => l.id === id);
-  const closeGoals = (goals.data?.goals ?? []).filter((g) => {
+  const closeGoals = (goalsOn ? goals.data?.goals ?? [] : []).filter((g) => {
     if (g.done_at || !(g.people.length === 0 || g.people.includes(me.id))) return false;
     const { ratio } = goalProgress(g, (goals.data?.steps ?? []).filter((s) => s.goal_id === g.id));
     return ratio >= 0.75;
