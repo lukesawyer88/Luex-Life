@@ -176,6 +176,21 @@ export type Database = {
         { family_id: string; title: string; icon?: string; rrule?: string; starts_on?: string; mode?: string; people?: string[]; part_of_day?: string; needs_confirm?: boolean; stars?: number; notes?: string | null; is_cleaning?: boolean; active?: boolean; money?: number; needs_photo?: boolean },
         { title?: string; icon?: string; rrule?: string; starts_on?: string; mode?: string; people?: string[]; part_of_day?: string; needs_confirm?: boolean; stars?: number; notes?: string | null; is_cleaning?: boolean; active?: boolean; money?: number; needs_photo?: boolean }
       >;
+      doc_folders: Table<
+        { id: string; family_id: string; name: string; emoji: string | null; position: number; archived_at: string | null },
+        { family_id: string; name: string; emoji?: string | null; position?: number },
+        { name?: string; emoji?: string | null; position?: number; archived_at?: string | null }
+      >;
+      doc_sends: Table<
+        { document_id: string; for_date: string },
+        { document_id: string; for_date: string },
+        {  }
+      >;
+      documents: Table<
+        { id: string; family_id: string; folder_id: string | null; title: string; person_id: string | null; pages: string[]; expires_on: string | null; remind_days: number; where_kept: string | null; ref: string | null; phone: string | null; price: number | null; notes: string; private_to: string | null; created_by: string | null; created_at: string; updated_at: string; deleted_at: string | null },
+        { family_id: string; folder_id?: string | null; title: string; person_id?: string | null; pages?: string[]; expires_on?: string | null; remind_days?: number; where_kept?: string | null; ref?: string | null; phone?: string | null; price?: number | null; notes?: string; private_to?: string | null },
+        { folder_id?: string | null; title?: string; person_id?: string | null; pages?: string[]; expires_on?: string | null; remind_days?: number; where_kept?: string | null; ref?: string | null; phone?: string | null; price?: number | null; notes?: string; deleted_at?: string | null }
+      >;
       families: Table<
         { id: string; name: string; owner_id: string; signup_source: string; created_at: string; archived_at: string | null; timezone: string; calendar_prefs: Json; weather_place: string | null; weather_lat: number | null; weather_lon: number | null },
         { id?: string; name: string; owner_id: string; signup_source?: string; created_at?: string; archived_at?: string | null; timezone?: string; calendar_prefs?: Json; weather_place?: string | null; weather_lat?: number | null; weather_lon?: number | null },
@@ -569,6 +584,7 @@ export type Database = {
       reward_move: { Args: { p_member: string; p_from: string; p_to: string; p_amount: number }; Returns: undefined };
       reward_advance: { Args: { p_child: string; p_amount: number; p_repay: number }; Returns: undefined };
       reward_cheer: { Args: { p_habit: string }; Returns: undefined };
+      doc_setup: { Args: Record<string, never>; Returns: undefined };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };

@@ -87,7 +87,7 @@ export function SettingsPage() {
                     <Icon className="size-5 shrink-0 text-muted-foreground" />
                     <Label htmlFor={id} className="flex-1 text-sm font-medium">
                       {m.name}
-                      {m.audience === "parents" ? <span className="ml-2 text-xs font-normal text-muted-foreground">parents only</span> : null}
+                      {m.audience !== "everyone" ? <span className="ml-2 text-xs font-normal text-muted-foreground">{m.audience === "parents" ? "parents only" : "grown-ups only"}</span> : null}
                     </Label>
                     <Switch id={id} checked={on} disabled={!isParent || !m.canSwitchOff} onCheckedChange={(v) => void toggle(m.key, v)} />
                   </li>

@@ -27,7 +27,8 @@ export type ModuleConfig = {
   icon: LucideIcon;
   group: string;
   /** Who sees it by default. The database enforces this as each module's tables are built. */
-  audience: "everyone" | "parents";
+  /** "adults": every grown-up (not children). */
+  audience: "everyone" | "adults" | "parents";
   /** One plain sentence for the module page until the module is built */
   summary: string;
   /** What will live in this module (from the agreed module list) */
@@ -90,7 +91,7 @@ export const MODULES: ModuleConfig[] = [
     includes: ["Appointments (dates only)", "Medication reminders", "Wellbeing check-ins", "Vaccination and check-up schedule"],
   },
   {
-    key: "documents", name: "Documents and Papers", icon: FileText, group: "Admin", audience: "parents", wave: 1, canSwitchOff: true,
+    key: "documents", name: "Documents and Papers", icon: FileText, group: "Admin", audience: "adults", wave: 1, canSwitchOff: true,
     summary: "Where your important papers are, and when they run out.",
     includes: ["Documents", "Passport and ID expiry dates", "Where important papers are kept"],
   },
@@ -118,10 +119,17 @@ export const MODULES: ModuleConfig[] = [
 
 export const MODULE_BY_KEY = Object.fromEntries(MODULES.map((m) => [m.key, m])) as Record<string, ModuleConfig>;
 
+/** Whether someone's role lets them open a module. */
+export function audienceAllows(m: ModuleConfig, role: Role | undefined): boolean {
+  if (m.audience === "parents") return role === "parent";
+  if (m.audience === "adults") return role === "parent" || role === "member";
+  return true;
+}
+
 /** Which modules a person sees: the family has it on, and their role is allowed. */
 export function visibleModules(role: Role | undefined, switchedOff: ReadonlySet<string>): ModuleConfig[] {
   return MODULES.filter((m) => {
-    if (m.audience === "parents" && role !== "parent") return false;
+    if (!audienceAllows(m, role)) return false;
     if (m.canSwitchOff && switchedOff.has(m.key)) return false;
     return true;
   });

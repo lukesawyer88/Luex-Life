@@ -4,7 +4,7 @@ import { lazy, Suspense } from "react";
 
 import { DetailWindow, RecordsWindow, Windows } from "@/components/page-parts";
 import { useFamilyState } from "@/lib/family-context";
-import { MODULE_BY_KEY } from "@/modules/registry";
+import { MODULE_BY_KEY, audienceAllows } from "@/modules/registry";
 
 // each module loads only when it is opened (keeps the first download small)
 const CalendarPage = lazy(() => import("@/modules/calendar/calendar-page").then((m) => ({ default: m.CalendarPage })));
@@ -24,7 +24,7 @@ export function ModulePage() {
   const { role, switchedOff } = useFamilyState();
   const m = MODULE_BY_KEY[key];
 
-  if (!m || (m.audience === "parents" && role !== "parent") || (m.canSwitchOff && switchedOff.has(m.key))) {
+  if (!m || !audienceAllows(m, role) || (m.canSwitchOff && switchedOff.has(m.key))) {
     return (
       <Windows>
         <RecordsWindow>
