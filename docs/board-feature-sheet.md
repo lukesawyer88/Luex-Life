@@ -100,7 +100,7 @@ Agreed 27 Oct 2026. Module 3 of 15. Research: FamilyWall, Cozi, FamilyGoal, Tiny
 4. Children's chat is a safeguarding area: ask the same adviser as for Kids' Space.
 
 ## Build status (27 Oct 2026)
-Built and tested on a local copy; not yet live (waiting for the owner's yes to apply the database changes and switch on the album-link service).
+Built and live (27 Oct 2026): database changes applied, schedules running (journal questions every 5 minutes, shared places cleared every 10 minutes, nightly tidy) and the album-link service switched on. 20 live checks passed (rolled back).
 
 Checks: 153 Board database security checks (plus the 158 Calendar ones still passing), 63 one-screen checks (parent, child, grandparent at phone, tablet and laptop size), 21 journey tests (sending, polls, reading a child's chat, lists, photo upload, album link, goals, settings), and the 20 Calendar journeys still passing. An independent security review found 11 problems inside a family (none across families); all fixed and tested.
 

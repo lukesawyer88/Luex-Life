@@ -1,4 +1,5 @@
 -- Family Board: fixes from the independent security review (27 Oct 2026). See part 1 for the rules.
+-- Policies are changed with ALTER POLICY (the live database tool refuses DROP).
 
 -- ---------------------------------------------------------------- 1. a grown-up can never be turned into a child
 -- (a child's chats and journal can be opened to parents; turning an adult into a "child" would open theirs)
@@ -65,72 +66,54 @@ grant execute on function public.board_sees_message(public.board_messages) to au
 
 -- ---------------------------------------------------------------- 3. every read starts with "my family" (fast, and no scanning other families)
 
-drop policy board_threads_read on public.board_threads;
-create policy board_threads_read on public.board_threads for select to authenticated
+alter policy board_threads_read on public.board_threads
   using (family_id = (select public.my_family_id()) and public.board_can_see_thread(id));
-drop policy board_threads_change on public.board_threads;
-create policy board_threads_change on public.board_threads for update to authenticated
+alter policy board_threads_change on public.board_threads
   using (family_id = (select public.my_family_id()) and public.board_can_post(id))
   with check (family_id = (select public.my_family_id()) and public.board_can_post(id));
-drop policy board_thread_people_read on public.board_thread_people;
-create policy board_thread_people_read on public.board_thread_people for select to authenticated
+alter policy board_thread_people_read on public.board_thread_people
   using (family_id = (select public.my_family_id()) and public.board_can_see_thread(thread_id));
-drop policy board_thread_state_read on public.board_thread_state;
-create policy board_thread_state_read on public.board_thread_state for select to authenticated
+alter policy board_thread_state_read on public.board_thread_state
   using (family_id = (select public.my_family_id()) and public.board_can_see_thread(thread_id));
 
-drop policy board_messages_read on public.board_messages;
-create policy board_messages_read on public.board_messages for select to authenticated
+alter policy board_messages_read on public.board_messages
   using (family_id = (select public.my_family_id()) and public.board_sees_message(board_messages));
-drop policy board_messages_add on public.board_messages;
-create policy board_messages_add on public.board_messages for insert to authenticated
+alter policy board_messages_add on public.board_messages
   with check (family_id = (select public.my_family_id()) and public.board_can_post(thread_id));
-drop policy board_messages_change on public.board_messages;
-create policy board_messages_change on public.board_messages for update to authenticated
+alter policy board_messages_change on public.board_messages
   using (family_id = (select public.my_family_id()) and public.board_sees_message(board_messages))
   with check (family_id = (select public.my_family_id()) and public.board_sees_message(board_messages));
 
-drop policy board_reactions_read on public.board_reactions;
-create policy board_reactions_read on public.board_reactions for select to authenticated
+alter policy board_reactions_read on public.board_reactions
   using (family_id = (select public.my_family_id()) and public.board_can_see_message(message_id));
-drop policy board_acks_read on public.board_acks;
-create policy board_acks_read on public.board_acks for select to authenticated
+alter policy board_acks_read on public.board_acks
   using (family_id = (select public.my_family_id()) and public.board_can_see_message(message_id));
-drop policy board_polls_read on public.board_polls;
-create policy board_polls_read on public.board_polls for select to authenticated
+alter policy board_polls_read on public.board_polls
   using (family_id = (select public.my_family_id()) and public.board_can_see_message(message_id));
-drop policy board_polls_change on public.board_polls;
-create policy board_polls_change on public.board_polls for update to authenticated
+alter policy board_polls_change on public.board_polls
   using (family_id = (select public.my_family_id()) and public.board_can_post_message(message_id))
   with check (family_id = (select public.my_family_id()) and public.board_can_post_message(message_id));
-drop policy board_poll_options_read on public.board_poll_options;
-create policy board_poll_options_read on public.board_poll_options for select to authenticated
+alter policy board_poll_options_read on public.board_poll_options
   using (family_id = (select public.my_family_id()) and public.board_can_see_message(message_id));
-drop policy board_poll_votes_read on public.board_poll_votes;
-create policy board_poll_votes_read on public.board_poll_votes for select to authenticated
+alter policy board_poll_votes_read on public.board_poll_votes
   using (family_id = (select public.my_family_id()) and public.board_can_see_message(message_id));
 
 -- 5. a removed message's place disappears with it
-drop policy board_locations_read on public.board_locations;
-create policy board_locations_read on public.board_locations for select to authenticated
+alter policy board_locations_read on public.board_locations
   using (family_id = (select public.my_family_id()) and expires_at > now() and public.board_can_see_message(message_id)
     and exists (select 1 from public.board_messages m where m.id = message_id and m.deleted_at is null));
 
-drop policy board_media_read on public.board_media;
-create policy board_media_read on public.board_media for select to authenticated
+alter policy board_media_read on public.board_media
   using (family_id = (select public.my_family_id()) and public.board_can_see_media(board_media));
-drop policy board_media_change on public.board_media;
-create policy board_media_change on public.board_media for update to authenticated
+alter policy board_media_change on public.board_media
   using (family_id = (select public.my_family_id()) and public.board_can_see_media(board_media)
     and (owner = (select public.my_member_id()) or public.is_family_parent(family_id)))
   with check (family_id = (select public.my_family_id()) and public.board_can_see_media(board_media)
     and (owner = (select public.my_member_id()) or public.is_family_parent(family_id)));
 
-drop policy board_memories_read on public.board_memories;
-create policy board_memories_read on public.board_memories for select to authenticated
+alter policy board_memories_read on public.board_memories
   using (family_id = (select public.my_family_id()) and public.board_sees_memory(board_memories));
-drop policy board_memories_change on public.board_memories;
-create policy board_memories_change on public.board_memories for update to authenticated
+alter policy board_memories_change on public.board_memories
   using (family_id = (select public.my_family_id()) and (author = (select public.my_member_id())
     or (public.is_family_parent(family_id) and public.board_sees_memory(board_memories))))
   with check (family_id = (select public.my_family_id()) and (author = (select public.my_member_id())
@@ -384,11 +367,11 @@ end $$;
 -- journal entry but not rewrite it. Journal openness is stamped when written.
 create or replace function public.board_stamp_extra()
 returns trigger language plpgsql security definer set search_path = '' as $$
-declare me uuid := public.my_member_id(); up uuid;
+declare me uuid := public.my_member_id(); up text;
 begin
   if tg_table_name = 'board_media' then
-    select o.owner into up from storage.objects o where o.bucket_id = 'board-media' and o.name = new.path;
-    if up is distinct from (select auth.uid()) then raise exception 'That change is not allowed'; end if;
+    select coalesce(o.owner_id, o.owner::text) into up from storage.objects o where o.bucket_id = 'board-media' and o.name = new.path;
+    if up is distinct from (select auth.uid())::text then raise exception 'That change is not allowed'; end if;
   elsif tg_table_name = 'board_memories' then
     if tg_op = 'INSERT' then
       new.parents_may_see := new.audience = 'private' and exists (

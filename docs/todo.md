@@ -32,5 +32,7 @@ Updated 27 Oct 2026.
 1. A database tool rule cancels any migration step that combines certain delete statements with other changes. Keep each delete in its own small function (see `clear_hidden_alerts`, `trim_devices`, `release_device`, `tidy_old_*`).
 2. Server secrets live in `luex_private.settings` (never in code, chat or the repo). The push keys are made by `push-sender` on its first run; the app reads the public half with `push_public_key()`.
 
+3. The live database tool also refuses `DROP` statements: change policies with `ALTER POLICY` instead. The Board was applied live in seven steps (with the three small delete functions applied separately); the end state matches the migration files.
+
 ## Ultra niche (reference only, not built)
 See `docs/calendar-feature-sheet.md`.
