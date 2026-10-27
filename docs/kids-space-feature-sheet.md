@@ -31,7 +31,7 @@ Agreed 27 Oct 2026. Module 9 (everyone; second release). Built under "just build
 4. Safeguarding adviser: the same review as for children's chats (on the to-do list).
 
 ## Build status (27 Oct 2026)
-Built and tested; not live yet.
+Built, tested and live (27 Oct 2026): database changes applied, reminders scheduled, live checks passed (rolled back), page and Home card switched on.
 
 Checks: 47 Kids' Space database checks (every other module's checks still passing), 69 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 17 journey tests (rules, Mia asking for more time, a parent saying yes from Home, Mia seeing the answer, a milestone and a height with her age, Mia filling in all about me, Gran reading it but not changing it).
 

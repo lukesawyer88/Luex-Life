@@ -30,7 +30,7 @@ Agreed 27 Oct 2026. Module 11 (everyone; second release). Owner said "just build
 2. Is the "two days to go" message the right timing? (A trip added the day before still gets it.)
 
 ## Build status (27 Oct 2026)
-Built and tested; not live yet.
+Built, tested and live (27 Oct 2026): database changes applied, reminders scheduled, live checks passed (rolled back), page and Home card switched on.
 
 Checks: 39 Trips database checks (every other module's checks still passing), 60 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 18 journey tests (adding a trip that goes on the Calendar with a countdown, the passport warning, packing for each person with a ready-made beach list, the before-we-go jobs, a flight with its time and reference, a child ticking and adding their own packing, ideas for days out, the Home card).
 

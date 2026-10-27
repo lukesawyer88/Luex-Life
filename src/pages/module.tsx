@@ -16,6 +16,10 @@ const SchoolPage = lazy(() => import("@/modules/school/school-page").then((m) =>
 const DocumentsPage = lazy(() => import("@/modules/documents/documents-page").then((m) => ({ default: m.DocumentsPage })));
 const ContactsPage = lazy(() => import("@/modules/contacts/contacts-page").then((m) => ({ default: m.ContactsPage })));
 const HomeCarePage = lazy(() => import("@/modules/home-care/home-care-page").then((m) => ({ default: m.HomeCarePage })));
+const TripsPage = lazy(() => import("@/modules/trips/trips-page").then((m) => ({ default: m.TripsPage })));
+const HostingPage = lazy(() => import("@/modules/hosting/hosting-page").then((m) => ({ default: m.HostingPage })));
+const KidsPage = lazy(() => import("@/modules/kids/kids-page").then((m) => ({ default: m.KidsPage })));
+const HealthPage = lazy(() => import("@/modules/health/health-page").then((m) => ({ default: m.HealthPage })));
 
 function Loading() {
   return <div className="grid flex-1 place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
@@ -45,6 +49,10 @@ export function ModulePage() {
   if (m.key === "documents") return <Suspense fallback={<Loading />}><DocumentsPage /></Suspense>;
   if (m.key === "contacts") return <Suspense fallback={<Loading />}><ContactsPage /></Suspense>;
   if (m.key === "home-care") return <Suspense fallback={<Loading />}><HomeCarePage /></Suspense>;
+  if (m.key === "trips") return <Suspense fallback={<Loading />}><TripsPage /></Suspense>;
+  if (m.key === "bookings") return <Suspense fallback={<Loading />}><HostingPage /></Suspense>;
+  if (m.key === "kids") return <Suspense fallback={<Loading />}><KidsPage /></Suspense>;
+  if (m.key === "health") return <Suspense fallback={<Loading />}><HealthPage /></Suspense>;
   const Icon = m.icon;
   return (
     <Windows>

@@ -30,7 +30,7 @@ Agreed 27 Oct 2026. Module 10 (parents only; second release). Built under "just 
 3. Should check-ups due show in Documents' Renewals list too?
 
 ## Build status (27 Oct 2026)
-Built and tested; not live yet.
+Built, tested and live (27 Oct 2026): database changes applied, reminders scheduled, live checks passed (rolled back), page and Home card switched on.
 
 Checks: 33 Health database checks (every other module's checks still passing), 38 one-screen checks (two parents at phone, tablet and laptop size; a child and a grandparent can't open it), 10 journey tests (adding Calpol for Tom for three days, ticking a dose given from Home, the other parent seeing who gave it, a dentist check-up moving on six months when done, an appointment going on the Calendar).
 

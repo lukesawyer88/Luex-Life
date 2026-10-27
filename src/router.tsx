@@ -35,7 +35,7 @@ const persister = createSyncStoragePersister({
   throttleTime: 2000,
 });
 // "em": Contacts and Emergency works without a signal
-const KEEP_OFFLINE = new Set(["me", "family", "members", "modules", "cal", "rewards", "em"]);
+const KEEP_OFFLINE = new Set(["me", "family", "members", "modules", "cal", "rewards", "em", "trips"]);
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });
 

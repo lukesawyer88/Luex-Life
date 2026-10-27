@@ -31,7 +31,7 @@ Agreed 27 Oct 2026. Module 12 (everyone; second release). Built under "just buil
 3. Is a week ahead the right time for the Home card to appear?
 
 ## Build status (27 Oct 2026)
-Built and tested; not live yet.
+Built, tested and live (27 Oct 2026): database changes applied, reminders scheduled, live checks passed (rolled back), page and Home card switched on.
 
 Checks: 32 Hosting database checks (every other module's checks still passing), 60 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 14 journey tests (planning a party that goes on the Calendar, a guest with numbers and dietary needs, the food summary, a shopping item, a job given to Mia who is told, Mia ticking it, a grandparent not offered Change, a booked table with its reference, the Home card).
 

@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { MODULES, groupModules, visibleModules } from "./registry";
 
 describe("module registry", () => {
-  it("has the 15 agreed modules with unique keys", () => {
-    expect(MODULES).toHaveLength(15);
-    expect(new Set(MODULES.map((m) => m.key)).size).toBe(15);
+  it("has the 14 agreed modules with unique keys (Cars folded into Documents)", () => {
+    expect(MODULES).toHaveLength(14);
+    expect(new Set(MODULES.map((m) => m.key)).size).toBe(14);
   });
 
   it("hides parent-only modules from children and adults", () => {
