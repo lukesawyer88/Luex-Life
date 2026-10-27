@@ -96,7 +96,7 @@ Agreed 27 Oct 2026. Module 4 of 15. Research: Paprika, Mealime, Samsung Food (Wh
 5. Allergy warnings are a help, never a guarantee.
 
 ## Build status (27 Oct 2026)
-Built and tested on a local copy; waiting for the owner's yes to go live (database changes, two schedules, and the recipe-import service).
+Built and live (27 Oct 2026): database changes applied, use-by alerts and nightly tidy scheduled, recipe-import service switched on (checks sign-in). 16 live checks passed (rolled back).
 
 Checks: 65 Food database security checks (Calendar 158 and Board 153 still passing), 66 one-screen checks (parent, child, grandparent at phone, tablet and laptop size), 17 Food journey tests, 4 ingredient unit tests. An independent security review found 7 problems inside a family (none across families); all fixed and tested.
 
