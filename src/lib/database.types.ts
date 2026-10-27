@@ -286,6 +286,91 @@ export type Database = {
         { family_id: string; name: string; phone?: string | null; link?: string | null; notes?: string },
         { name?: string; phone?: string | null; link?: string | null; notes?: string; last_ordered?: string | null; archived_at?: string | null }
       >;
+      money_accounts: Table<
+        { id: string; family_id: string; name: string; kind: string; currency: string; opening_balance: number; owner: string | null; private_to: string | null; position: number; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; name: string; kind?: string; currency?: string; opening_balance?: number; owner?: string | null; private_to?: string | null; position?: number },
+        { name?: string; kind?: string; currency?: string; opening_balance?: number; owner?: string | null; private_to?: string | null; position?: number; archived_at?: string | null }
+      >;
+      money_alert_sends: Table<
+        { bill_id: string; kind: string; for_date: string },
+        { bill_id: string; kind: string; for_date: string },
+        {  }
+      >;
+      money_bills: Table<
+        { id: string; family_id: string; name: string; kind: string; amount: number; currency: string; every: string; next_due: string; account_id: string | null; category_id: string | null; payee_match: string | null; trial_ends: string | null; contract_ends: string | null; remind_days: number; auto_record: boolean; previous_amount: number | null; amount_changed_on: string | null; notes: string; private_to: string | null; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; name: string; kind?: string; amount: number; currency?: string; every?: string; next_due: string; account_id?: string | null; category_id?: string | null; payee_match?: string | null; trial_ends?: string | null; contract_ends?: string | null; remind_days?: number; auto_record?: boolean; notes?: string; private_to?: string | null },
+        { name?: string; kind?: string; amount?: number; currency?: string; every?: string; next_due?: string; account_id?: string | null; category_id?: string | null; payee_match?: string | null; trial_ends?: string | null; contract_ends?: string | null; remind_days?: number; auto_record?: boolean; notes?: string; private_to?: string | null; archived_at?: string | null }
+      >;
+      money_budgets: Table<
+        { id: string; family_id: string; category_id: string; period_start: string; planned: number },
+        { family_id: string; category_id: string; period_start: string; planned?: number },
+        { planned?: number }
+      >;
+      money_categories: Table<
+        { id: string; family_id: string; name: string; emoji: string | null; direction: string; carry_over: boolean; position: number; archived_at: string | null },
+        { family_id: string; name: string; emoji?: string | null; direction?: string; carry_over?: boolean; position?: number },
+        { name?: string; emoji?: string | null; carry_over?: boolean; position?: number; archived_at?: string | null }
+      >;
+      money_credit_scores: Table<
+        { id: string; family_id: string; member_id: string; agency: string; score: number; on_date: string; private_to: string | null; created_at: string },
+        { family_id: string; member_id: string; agency: string; score: number; on_date?: string; private_to?: string | null },
+        {  }
+      >;
+      money_debts: Table<
+        { id: string; family_id: string; name: string; kind: string; balance: number; rate: number | null; payment: number | null; as_of: string; private_to: string | null; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; name: string; kind?: string; balance: number; rate?: number | null; payment?: number | null; as_of?: string; private_to?: string | null },
+        { name?: string; kind?: string; balance?: number; rate?: number | null; payment?: number | null; as_of?: string; private_to?: string | null; archived_at?: string | null }
+      >;
+      money_gift_budgets: Table<
+        { id: string; family_id: string; person: string | null; person_name: string | null; occasion: string; year: number; budget: number; created_by: string | null; created_at: string },
+        { family_id: string; person?: string | null; person_name?: string | null; occasion: string; year: number; budget: number },
+        { budget?: number }
+      >;
+      money_holding_values: Table<
+        { id: string; holding_id: string; family_id: string; value: number; on_date: string; private_to: string | null },
+        { holding_id: string; family_id: string; value: number; on_date?: string; private_to?: string | null },
+        { value?: number }
+      >;
+      money_holdings: Table<
+        { id: string; family_id: string; name: string; kind: string; owner: string | null; private_to: string | null; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; name: string; kind?: string; owner?: string | null; private_to?: string | null },
+        { name?: string; kind?: string; owner?: string | null; private_to?: string | null; archived_at?: string | null }
+      >;
+      money_import_profiles: Table<
+        { id: string; family_id: string; name: string; signature: string; mapping: Json },
+        { family_id: string; name: string; signature: string; mapping: Json },
+        { name?: string; mapping?: Json }
+      >;
+      money_payee_rules: Table<
+        { id: string; family_id: string; match: string; category_id: string },
+        { family_id: string; match: string; category_id: string },
+        { category_id?: string }
+      >;
+      money_payments: Table<
+        { id: string; family_id: string; account_id: string | null; category_id: string | null; direction: string; amount: number; currency: string; amount_gbp: number; on_date: string; payee: string; note: string; paid_by: string | null; in_budget: boolean; bill_id: string | null; pot_id: string | null; child_id: string | null; gift_budget_id: string | null; receipt_path: string | null; source: string; import_key: string | null; food_spend_id: string | null; private_to: string | null; created_by: string | null; created_at: string; deleted_at: string | null },
+        { family_id: string; account_id?: string | null; category_id?: string | null; direction?: string; amount: number; currency?: string; amount_gbp: number; on_date?: string; payee?: string; note?: string; paid_by?: string | null; in_budget?: boolean; bill_id?: string | null; pot_id?: string | null; child_id?: string | null; gift_budget_id?: string | null; receipt_path?: string | null; source?: string; import_key?: string | null; private_to?: string | null },
+        { account_id?: string | null; category_id?: string | null; direction?: string; amount?: number; currency?: string; amount_gbp?: number; on_date?: string; payee?: string; note?: string; paid_by?: string | null; in_budget?: boolean; bill_id?: string | null; pot_id?: string | null; child_id?: string | null; gift_budget_id?: string | null; receipt_path?: string | null; private_to?: string | null; deleted_at?: string | null }
+      >;
+      money_pot_moves: Table<
+        { id: string; pot_id: string; family_id: string; amount: number; on_date: string; note: string; private_to: string | null; created_by: string | null; created_at: string },
+        { pot_id: string; family_id: string; amount: number; on_date?: string; note?: string; private_to?: string | null },
+        {  }
+      >;
+      money_pots: Table<
+        { id: string; family_id: string; name: string; kind: string; emoji: string | null; target: number | null; target_date: string | null; private_to: string | null; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; name: string; kind?: string; emoji?: string | null; target?: number | null; target_date?: string | null; private_to?: string | null },
+        { name?: string; emoji?: string | null; target?: number | null; target_date?: string | null; private_to?: string | null; archived_at?: string | null }
+      >;
+      money_settings: Table<
+        { family_id: string; period: string; payday_day: number | null; four_weekly_anchor: string | null; weekly_summary: boolean; updated_at: string },
+        { family_id: string; period?: string; payday_day?: number | null; four_weekly_anchor?: string | null; weekly_summary?: boolean },
+        { period?: string; payday_day?: number | null; four_weekly_anchor?: string | null; weekly_summary?: boolean }
+      >;
+      money_summary_sends: Table<
+        { member_id: string; week_start: string },
+        { member_id: string; week_start: string },
+        {  }
+      >;
       notification_prefs: Table<
         { member_id: string; family_id: string; changes: string; reminders: boolean; weekly: boolean; wishlists: boolean; updated_at: string },
         { member_id: string; family_id: string; changes?: string; reminders?: boolean; weekly?: boolean; wishlists?: boolean },
@@ -368,6 +453,11 @@ export type Database = {
       board_create_album_share: { Args: { p_album: string; p_label: string; p_days: number }; Returns: string };
       board_search: { Args: { p_q: string }; Returns: { kind: string; id: string; ref: string | null; title: string; snippet: string; at: string }[] };
       board_todays_prompt: { Args: Record<string, never>; Returns: { prompt_id: string; text: string }[] };
+      food_can_add_photo: { Args: Record<string, never>; Returns: boolean };
+      money_setup: { Args: Record<string, never>; Returns: undefined };
+      money_period_start: { Args: { f: string; d: string }; Returns: string };
+      money_next_due: { Args: { d: string; every: string }; Returns: string };
+      money_can_add_file: { Args: Record<string, never>; Returns: boolean };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
