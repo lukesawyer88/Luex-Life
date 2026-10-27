@@ -167,14 +167,14 @@ export type Database = {
         { name?: string; kind?: string; label?: string | null; starts_on?: string; ends_on?: string }
       >;
       chore_done: Table<
-        { id: string; family_id: string; chore_id: string; due_on: string; for_member: string; done_by: string | null; done_at: string; stars: number; confirmed_by: string | null; confirmed_at: string | null },
-        { family_id: string; chore_id: string; due_on: string; for_member: string },
+        { id: string; family_id: string; chore_id: string; due_on: string; for_member: string; done_by: string | null; done_at: string; stars: number; confirmed_by: string | null; confirmed_at: string | null; photo_path: string | null },
+        { family_id: string; chore_id: string; due_on: string; for_member: string; photo_path?: string | null },
         { confirmed_at?: string | null }
       >;
       chores: Table<
-        { id: string; family_id: string; title: string; icon: string; rrule: string; starts_on: string; mode: string; people: string[]; part_of_day: string; needs_confirm: boolean; stars: number; notes: string | null; is_cleaning: boolean; active: boolean; created_by_member: string | null; created_at: string; updated_at: string },
-        { family_id: string; title: string; icon?: string; rrule?: string; starts_on?: string; mode?: string; people?: string[]; part_of_day?: string; needs_confirm?: boolean; stars?: number; notes?: string | null; is_cleaning?: boolean; active?: boolean },
-        { title?: string; icon?: string; rrule?: string; starts_on?: string; mode?: string; people?: string[]; part_of_day?: string; needs_confirm?: boolean; stars?: number; notes?: string | null; is_cleaning?: boolean; active?: boolean }
+        { id: string; family_id: string; title: string; icon: string; rrule: string; starts_on: string; mode: string; people: string[]; part_of_day: string; needs_confirm: boolean; stars: number; notes: string | null; is_cleaning: boolean; active: boolean; created_by_member: string | null; created_at: string; updated_at: string; money: number; needs_photo: boolean },
+        { family_id: string; title: string; icon?: string; rrule?: string; starts_on?: string; mode?: string; people?: string[]; part_of_day?: string; needs_confirm?: boolean; stars?: number; notes?: string | null; is_cleaning?: boolean; active?: boolean; money?: number; needs_photo?: boolean },
+        { title?: string; icon?: string; rrule?: string; starts_on?: string; mode?: string; people?: string[]; part_of_day?: string; needs_confirm?: boolean; stars?: number; notes?: string | null; is_cleaning?: boolean; active?: boolean; money?: number; needs_photo?: boolean }
       >;
       families: Table<
         { id: string; name: string; owner_id: string; signup_source: string; created_at: string; archived_at: string | null; timezone: string; calendar_prefs: Json; weather_place: string | null; weather_lat: number | null; weather_lon: number | null },
@@ -286,6 +286,16 @@ export type Database = {
         { family_id: string; name: string; phone?: string | null; link?: string | null; notes?: string },
         { name?: string; phone?: string | null; link?: string | null; notes?: string; last_ordered?: string | null; archived_at?: string | null }
       >;
+      habit_logs: Table<
+        { id: string; family_id: string; habit_id: string; member_id: string; day: string; count: number; skipped: boolean; updated_at: string },
+        { family_id: string; habit_id: string; member_id: string; day: string; count?: number; skipped?: boolean },
+        { count?: number; skipped?: boolean }
+      >;
+      habits: Table<
+        { id: string; family_id: string; member_id: string; title: string; emoji: string | null; per: string; target: number; unit: string | null; stars: number; buddy: string | null; position: number; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; member_id: string; title: string; emoji?: string | null; per?: string; target?: number; unit?: string | null; stars?: number; buddy?: string | null; position?: number },
+        { title?: string; emoji?: string | null; per?: string; target?: number; unit?: string | null; stars?: number; buddy?: string | null; position?: number; archived_at?: string | null }
+      >;
       money_accounts: Table<
         { id: string; family_id: string; name: string; kind: string; currency: string; opening_balance: number; owner: string | null; private_to: string | null; position: number; created_by: string | null; created_at: string; archived_at: string | null },
         { family_id: string; name: string; kind?: string; currency?: string; opening_balance?: number; owner?: string | null; private_to?: string | null; position?: number },
@@ -381,6 +391,16 @@ export type Database = {
         { id?: string; family_id: string; member_id: string; kind: string; title: string; body?: string; link?: string | null; group_key?: string | null; count?: number; created_at?: string; updated_at?: string; send_after?: string; pushed_at?: string | null; read_at?: string | null },
         { read_at?: string | null }
       >;
+      pocket_entries: Table<
+        { id: string; family_id: string; member_id: string; pot: string; amount: number; kind: string; note: string; status: string; on_date: string; source_key: string | null; created_by: string | null; decided_by: string | null; decided_at: string | null; created_at: string },
+        { family_id: string; member_id: string; pot?: string; amount: number; kind: string; note?: string; on_date?: string },
+        { status?: string }
+      >;
+      pocket_goals: Table<
+        { id: string; family_id: string; member_id: string; title: string; emoji: string | null; target: number; wish_item_id: string | null; reached_at: string | null; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; member_id: string; title: string; emoji?: string | null; target: number; wish_item_id?: string | null },
+        { title?: string; emoji?: string | null; target?: number; archived_at?: string | null }
+      >;
       push_subscriptions: Table<
         { id: string; family_id: string; member_id: string; user_id: string; endpoint: string; p256dh: string; auth: string; user_agent: string | null; created_at: string },
         { id?: string; family_id: string; member_id: string; user_id: string; endpoint: string; p256dh: string; auth: string; user_agent?: string | null; created_at?: string },
@@ -390,6 +410,41 @@ export type Database = {
         { event_id: string; occurrence_at: string; kind: string; minutes: number; sent_at: string },
         { event_id: string; occurrence_at: string; kind: string; minutes: number; sent_at?: string },
         {  }
+      >;
+      reward_claims: Table<
+        { id: string; family_id: string; reward_id: string; member_id: string; stars: number; status: string; decided_by: string | null; decided_at: string | null; created_at: string },
+        { family_id: string; reward_id: string; member_id: string },
+        { status?: string }
+      >;
+      reward_gives: Table<
+        { id: string; family_id: string; reward_id: string; member_id: string; stars: number; created_at: string },
+        { family_id: string; reward_id: string; member_id: string; stars: number },
+        {  }
+      >;
+      reward_jobs: Table<
+        { id: string; family_id: string; title: string; emoji: string | null; money: number; stars: number; people: string[]; needs_photo: boolean; claimed_by: string | null; claimed_at: string | null; done_at: string | null; photo_path: string | null; confirmed_by: string | null; confirmed_at: string | null; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; title: string; emoji?: string | null; money?: number; stars?: number; people?: string[]; needs_photo?: boolean },
+        { title?: string; emoji?: string | null; money?: number; stars?: number; people?: string[]; needs_photo?: boolean; claimed_by?: string | null; done_at?: string | null; photo_path?: string | null; confirmed_at?: string | null; archived_at?: string | null }
+      >;
+      reward_people: Table<
+        { member_id: string; family_id: string; pocket_amount: number; pocket_every: string; next_pay: string | null; save_pct: number; give_pct: number; paused_until: string | null; interest_pct: number; match_pct: number; teen_mode: boolean; advance_owed: number; advance_repay: number; alerts: string[]; updated_at: string },
+        { member_id: string; family_id: string; pocket_amount?: number; pocket_every?: string; next_pay?: string | null; save_pct?: number; give_pct?: number; paused_until?: string | null; interest_pct?: number; match_pct?: number; teen_mode?: boolean; advance_repay?: number; alerts?: string[] },
+        { pocket_amount?: number; pocket_every?: string; next_pay?: string | null; save_pct?: number; give_pct?: number; paused_until?: string | null; interest_pct?: number; match_pct?: number; teen_mode?: boolean; advance_repay?: number; alerts?: string[] }
+      >;
+      reward_sends: Table<
+        { member_id: string; kind: string; for_date: string },
+        { member_id: string; kind: string; for_date: string },
+        {  }
+      >;
+      reward_settings: Table<
+        { family_id: string; for_me: boolean; for_us: boolean; children: boolean; stars_per_pound: number | null; deductions_on: boolean; week_bonus: number; week_bonus_stars: number; updated_at: string },
+        { family_id: string; for_me?: boolean; for_us?: boolean; children?: boolean; stars_per_pound?: number | null; deductions_on?: boolean; week_bonus?: number; week_bonus_stars?: number },
+        { for_me?: boolean; for_us?: boolean; children?: boolean; stars_per_pound?: number | null; deductions_on?: boolean; week_bonus?: number; week_bonus_stars?: number }
+      >;
+      rewards: Table<
+        { id: string; family_id: string; kind: string; owner: string | null; people: string[]; title: string; emoji: string | null; stars: number; done_at: string | null; created_by: string | null; created_at: string; archived_at: string | null },
+        { family_id: string; kind: string; owner?: string | null; people?: string[]; title: string; emoji?: string | null; stars: number },
+        { people?: string[]; title?: string; emoji?: string | null; stars?: number; archived_at?: string | null }
       >;
       routine_runs: Table<
         { id: string; family_id: string; routine_id: string; run_on: string; started_at: string; finished_at: string | null; stars: number },
@@ -410,6 +465,11 @@ export type Database = {
         { id: string; family_id: string; member_id: string; name: string; icon: string; start_time: string | null; days: number[]; reward: string | null; stars: number; position: number; active: boolean; created_at: string },
         { family_id: string; member_id: string; name: string; icon?: string; start_time?: string | null; days?: number[]; reward?: string | null; stars?: number; position?: number; active?: boolean },
         { member_id?: string; name?: string; icon?: string; start_time?: string | null; days?: number[]; reward?: string | null; stars?: number; position?: number; active?: boolean }
+      >;
+      star_entries: Table<
+        { id: string; family_id: string; member_id: string; delta: number; kind: string; source_key: string | null; note: string; created_by: string | null; created_at: string },
+        { family_id: string; member_id: string; delta: number; kind: string; note?: string },
+        {  }
       >;
       wish_claims: Table<
         { item_id: string; family_id: string; list_id: string; claimed_by: string | null; bought: boolean; claimed_at: string },
@@ -458,6 +518,12 @@ export type Database = {
       money_period_start: { Args: { f: string; d: string }; Returns: string };
       money_next_due: { Args: { d: string; every: string }; Returns: string };
       money_can_add_file: { Args: Record<string, never>; Returns: boolean };
+      reward_setup: { Args: Record<string, never>; Returns: undefined };
+      reward_balances: { Args: Record<string, never>; Returns: { member_id: string; stars: number; spend: number; save: number; give: number; waiting: number }[] };
+      reward_swap: { Args: { p_member: string; p_stars: number }; Returns: number };
+      reward_move: { Args: { p_member: string; p_from: string; p_to: string; p_amount: number }; Returns: undefined };
+      reward_advance: { Args: { p_child: string; p_amount: number; p_repay: number }; Returns: undefined };
+      reward_cheer: { Args: { p_habit: string }; Returns: undefined };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
