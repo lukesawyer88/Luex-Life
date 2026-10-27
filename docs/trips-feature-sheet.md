@@ -28,3 +28,8 @@ Agreed 27 Oct 2026. Module 11 (everyone; second release). Owner said "just build
 ## Questions to settle after the build
 1. Should children see the plans (flights, hotel) or only packing and the countdown?
 2. Is the "two days to go" message the right timing?
+
+## Build status (27 Oct 2026)
+Built and tested; not live yet.
+
+Checks: 34 Trips database checks (every other module's checks still passing), 60 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 18 journey tests (adding a trip that goes on the Calendar with a countdown, the passport warning, packing for each person with a ready-made beach list, the before-we-go jobs, a flight with its time and reference, a child ticking and adding their own packing, ideas for days out, the Home card).
