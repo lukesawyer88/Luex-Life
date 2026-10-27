@@ -83,3 +83,17 @@ Agreed 27 Oct 2026. Module 5 of 15 (parents only). Research: YNAB, Emma, Snoop, 
 1. Statement formats differ by bank: the column-matching step is needed the first time for each bank.
 2. Money is the most sensitive data in the app: parents only, "just mine" privacy, and a stronger-model security review before launch; phone face ID or PIN lock once the store apps exist.
 3. Exchange rates and mortgage figures are estimates.
+
+## Build status (27 Oct 2026)
+Built and tested on a copy; not live yet (waiting for the owner's yes).
+
+Checks: 58 Money database checks (Calendar 94, Board 153, Food 65, access 51 and app calls 13 still passing), 58 one-screen checks (both parents at phone, tablet and laptop size; children and other grown-ups are shut out), 20 Money journey tests, 10 statement-reading unit tests. An independent security review found 9 problems (one parent could take over the other's "just mine" payments by making an account private; moving rows onto a private account; private payments revealing amounts through a shared bill; Food edits reaching private payments; duplicate checks revealing private imports; receipts not counting towards storage; shared receipts on private payments; the payday readable by children); all fixed and tested.
+
+Shops already typed into Food's budget come across once when Money goes live. Receipts now count towards the family's one storage allowance (Board, Food and Money together).
+
+Known limits:
+1. Something can't be switched between private and shared once the other parent has added to it, or while its payments have receipts (remove the receipts first).
+2. Statements are read as UTF-8; older Windows files may show odd characters in payee names. Imports don't set "who paid".
+3. A receipt chosen with no signal isn't kept; add it again later.
+4. Yearly-bill set-aside and the bills calendar total treat foreign-currency amounts as pounds.
+5. Exchange rates come from the European Central Bank's free feed, fetched by the phone; with no signal, type the pound amount.

@@ -313,6 +313,11 @@ end $$;
 revoke all on function public.after_food_spend() from public, anon, authenticated;
 create trigger food_spend_to_money after insert or update on public.food_spend for each row execute function public.after_food_spend();
 
+-- shops typed into Food before Money existed come across once
+insert into public.money_payments (family_id, direction, amount, currency, amount_gbp, on_date, payee, note, paid_by, source, food_spend_id, created_by)
+  select s.family_id, 'out', s.amount, 'GBP', s.amount, s.spent_on, coalesce(s.store, 'Food shop'), s.note, s.added_by, 'food', s.id, s.added_by
+  from public.food_spend s where not exists (select 1 from public.money_payments p where p.food_spend_id = s.id);
+
 -- ---------------------------------------------------------------- first visit: settings and everyday categories
 
 create or replace function public.money_setup()
@@ -333,6 +338,11 @@ begin
     insert into public.money_categories (family_id, name, emoji, direction, position) values (f, x.name, x.emoji, x.direction, x.pos)
       on conflict do nothing;
   end loop;
+  -- Food shops that arrived before the categories existed
+  perform set_config('luex.moneysys', 'on', true);
+  update public.money_payments set category_id = (select id from public.money_categories where family_id = f and name = 'Food shopping' and direction = 'out')
+    where family_id = f and source = 'food' and category_id is null;
+  perform set_config('luex.moneysys', 'off', true);
 end $$;
 revoke all on function public.money_setup() from public, anon;
 grant execute on function public.money_setup() to authenticated;
