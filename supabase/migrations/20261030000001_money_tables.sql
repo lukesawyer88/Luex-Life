@@ -162,9 +162,11 @@ create table public.money_payments (
   private_to uuid references public.family_members (id) on delete cascade,
   created_by uuid references public.family_members (id) on delete set null,
   created_at timestamptz not null default now(),
-  deleted_at timestamptz,
-  unique (family_id, import_key)
+  deleted_at timestamptz
 );
+-- an imported line is saved once per owner; private lines are checked only against the owner's own (so a clash never reveals them)
+create unique index money_payments_import_shared_idx on public.money_payments (family_id, import_key) where private_to is null;
+create unique index money_payments_import_private_idx on public.money_payments (private_to, import_key) where private_to is not null;
 create index money_payments_family_date_idx on public.money_payments (family_id, on_date desc);
 
 -- remembered categories per payee (from imports and changes)

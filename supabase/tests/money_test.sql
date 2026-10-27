@@ -191,6 +191,67 @@ begin
     perform pg_temp.chk(false, 'a grown-up who is not a parent saved a receipt');
   exception when others then perform pg_temp.chk(true, ''); end;
 
+  -- ===== review fixes: privacy can't be taken over
+  perform pg_temp.act(ua, 'ann@test.dev');
+  insert into public.money_accounts (family_id, name) values (fa, 'Shared card') returning id into x;
+  perform pg_temp.act(up, 'pat@test.dev');
+  insert into public.money_payments (family_id, account_id, amount, amount_gbp, payee, private_to) values (fa, x, 7, 7, 'PAT SECRET', pat);
+  insert into public.money_payments (family_id, account_id, amount, amount_gbp, payee) values (fa, x, 8, 8, 'Pat shared') returning id into pay;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  begin
+    update public.money_accounts set private_to = ann where id = x;
+    perform pg_temp.chk(false, 'making an account private took over the other parent''s things on it');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.chk(not exists (select 1 from public.money_payments where payee = 'PAT SECRET'), 'one parent reads the other''s private payment');
+  begin
+    update public.money_payments set account_id = mine where id = pay;
+    perform pg_temp.chk(false, 'moving the other parent''s payment onto a private account hid it');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    update public.money_bills set account_id = mine where id = bill;
+    perform pg_temp.chk(false, 'moving a shared bill someone else added onto a private account hid it');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- a private payment on a shared bill keeps its amount to itself
+  d := (select next_due from public.money_bills where id = bill);
+  insert into public.money_payments (family_id, account_id, bill_id, amount, amount_gbp, payee, on_date) values (fa, mine, bill, 63.21, 63.21, 'Electricity', d);
+  perform pg_temp.chk((select amount from public.money_bills where id = bill) = 110, 'a private payment changed a shared bill''s amount');
+  perform pg_temp.chk((select next_due from public.money_bills where id = bill) > d, 'a private payment still moves a shared bill on');
+  perform pg_temp.sys();
+  perform pg_temp.chk(not exists (select 1 from public.notifications where body like '%63.21%'), 'a private payment set off a price-rise alert');
+  -- food shops stay shared
+  perform pg_temp.act(ua, 'ann@test.dev');
+  insert into public.food_spend (family_id, amount, store) values (fa, 20, 'Aldi') returning id into x;
+  begin
+    update public.money_payments set private_to = ann where food_spend_id = x;
+    perform pg_temp.chk(false, 'a food shop was made private');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- a clash on an imported line never reveals a private one
+  insert into public.money_payments (family_id, account_id, amount, amount_gbp, payee, source, import_key) values (fa, mine, 85, 85, 'Pandora', 'import', 'guess');
+  perform pg_temp.act(up, 'pat@test.dev');
+  begin
+    insert into public.money_payments (family_id, amount, amount_gbp, payee, source, import_key) values (fa, 85, 85, 'Pandora', 'import', 'guess');
+    perform pg_temp.chk(true, '');
+  exception when unique_violation then perform pg_temp.chk(false, 'a duplicate check revealed a private payment'); end;
+  -- receipts block a change between private and shared
+  perform pg_temp.act(ua, 'ann@test.dev');
+  insert into public.money_pots (family_id, name) values (fa, 'Holiday') returning id into pot;
+  insert into public.money_payments (family_id, pot_id, amount, amount_gbp, receipt_path) values (fa, pot, 5, 5, fa || '/money/s/hol.jpg');
+  begin
+    update public.money_pots set private_to = ann where id = pot;
+    perform pg_temp.chk(false, 'a shared receipt stayed readable after its payment went private');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  -- pay periods are for parents in the family
+  perform pg_temp.act(uk, 'kid@test.dev');
+  begin
+    perform public.money_period_start(fa, current_date);
+    perform pg_temp.chk(false, 'a child read the family''s payday');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.act(ub, 'ben@test.dev');
+  begin
+    perform public.money_period_start(fa, current_date);
+    perform pg_temp.chk(false, 'another family read our payday');
+  exception when others then perform pg_temp.chk(true, ''); end;
+
   -- ===== other families and visitors
   perform pg_temp.act(ub, 'ben@test.dev');
   perform pg_temp.chk(not exists (select 1 from public.money_payments where family_id = fa), 'another family sees our payments');

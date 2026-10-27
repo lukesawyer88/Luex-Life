@@ -25,7 +25,9 @@ create or replace function public.money_period_start(f uuid, d date)
 returns date language plpgsql stable security definer set search_path = '' as $$
 declare s public.money_settings%rowtype; cand date; last_day integer;
 begin
-  if public.my_family_id() is not null and f is distinct from public.my_family_id() then raise exception 'That change is not allowed'; end if;
+  if (select auth.uid()) is not null and (f is distinct from public.my_family_id() or not public.is_family_parent(f)) then
+    raise exception 'That change is not allowed';
+  end if;
   select * into s from public.money_settings where family_id = f;
   if not found or s.period = 'month' then return date_trunc('month', d)::date; end if;
   if s.four_weekly_anchor is not null then
@@ -86,10 +88,6 @@ begin
   if j ? 'private_to' then
     if (j ->> 'private_to') is not null and (j ->> 'private_to')::uuid is distinct from me then
       raise exception 'You can only keep things private to yourself';
-    end if;
-    if tg_op = 'UPDATE' and (o ->> 'private_to') is null and (j ->> 'private_to') is not null
-       and (o ->> 'created_by') is distinct from me::text then
-      raise exception 'Only the person who added this can make it private';
     end if;
   end if;
 
@@ -174,6 +172,19 @@ begin
 
     else null;
   end case;
+
+  -- checked last, after privacy has been worked out from what the row is linked to
+  j := to_jsonb(new);
+  if j ? 'private_to' and tg_op = 'UPDATE' and (o ->> 'private_to') is null and (j ->> 'private_to') is not null
+     and (o ->> 'created_by') is distinct from me::text then
+    raise exception 'Only the person who added this can make it private';
+  end if;
+  -- Food's shop totals are shared between parents, so they can't be private
+  if tg_table_name = 'money_payments' then
+    if (j ->> 'private_to') is not null and ((j ->> 'source') = 'food' or (j ->> 'food_spend_id') is not null) then
+      raise exception 'Food shops are shared, so they can''t be private';
+    end if;
+  end if;
   return new;
 end $$;
 revoke all on function public.stamp_money_row() from public, anon, authenticated;
@@ -199,28 +210,53 @@ create trigger money_credit_scores_stamp before insert on public.money_credit_sc
 -- an account, pot or holding made private (or shared again): everything on it follows
 create or replace function public.after_money_private()
 returns trigger language plpgsql security definer set search_path = '' as $$
+declare me uuid := public.my_member_id(); others boolean; receipts boolean;
 begin
   if new.private_to is not distinct from old.private_to then return null; end if;
+  -- what hangs off this thing
+  if tg_table_name = 'money_accounts' then
+    select bool_or(p.created_by is distinct from me or (p.private_to is not null and p.private_to is distinct from old.private_to)),
+           bool_or(p.receipt_path is not null and p.private_to is not distinct from old.private_to)
+      into others, receipts from public.money_payments p where p.account_id = new.id;
+    others := coalesce(others, false) or exists (select 1 from public.money_bills b where b.account_id = new.id
+      and (b.created_by is distinct from me or (b.private_to is not null and b.private_to is distinct from old.private_to)));
+  elsif tg_table_name = 'money_bills' then
+    select bool_or(p.created_by is distinct from me or (p.private_to is not null and p.private_to is distinct from old.private_to)),
+           bool_or(p.receipt_path is not null and p.private_to is not distinct from old.private_to)
+      into others, receipts from public.money_payments p where p.bill_id = new.id and p.account_id is null;
+  elsif tg_table_name = 'money_pots' then
+    select bool_or(p.created_by is distinct from me or (p.private_to is not null and p.private_to is distinct from old.private_to)),
+           bool_or(p.receipt_path is not null and p.private_to is not distinct from old.private_to)
+      into others, receipts from public.money_payments p where p.pot_id = new.id and p.account_id is null;
+    others := coalesce(others, false) or exists (select 1 from public.money_pot_moves m where m.pot_id = new.id and m.created_by is distinct from me);
+  else
+    others := false;
+  end if;
+  -- the system (a cascade from an account) has already checked; people may only move their own things
+  if me is not null and not public.money_sys() then
+    if coalesce(others, false) then raise exception 'Someone else has added to this, so it can''t be changed between private and shared'; end if;
+    if coalesce(receipts, false) then raise exception 'Payments on this have receipts. Remove the receipts first, then change this'; end if;
+  end if;
   perform set_config('luex.moneysys', 'on', true);
   if tg_table_name = 'money_accounts' then
-    update public.money_payments set private_to = new.private_to where account_id = new.id;
-    update public.money_bills set private_to = new.private_to where account_id = new.id;
+    update public.money_payments set private_to = new.private_to where account_id = new.id and private_to is not distinct from old.private_to;
+    update public.money_bills set private_to = new.private_to where account_id = new.id and private_to is not distinct from old.private_to;
   elsif tg_table_name = 'money_pots' then
-    update public.money_pot_moves set private_to = new.private_to where pot_id = new.id;
-    update public.money_payments set private_to = new.private_to where pot_id = new.id and account_id is null;
+    update public.money_pot_moves set private_to = new.private_to where pot_id = new.id and private_to is not distinct from old.private_to;
+    update public.money_payments set private_to = new.private_to where pot_id = new.id and account_id is null and private_to is not distinct from old.private_to;
   elsif tg_table_name = 'money_holdings' then
     update public.money_holding_values set private_to = new.private_to where holding_id = new.id;
   elsif tg_table_name = 'money_bills' then
-    update public.money_payments set private_to = new.private_to where bill_id = new.id and account_id is null;
+    update public.money_payments set private_to = new.private_to where bill_id = new.id and account_id is null and private_to is not distinct from old.private_to;
   end if;
   perform set_config('luex.moneysys', 'off', true);
   return null;
 end $$;
 revoke all on function public.after_money_private() from public, anon, authenticated;
-create trigger money_accounts_private after update of private_to on public.money_accounts for each row execute function public.after_money_private();
-create trigger money_pots_private after update of private_to on public.money_pots for each row execute function public.after_money_private();
-create trigger money_holdings_private after update of private_to on public.money_holdings for each row execute function public.after_money_private();
-create trigger money_bills_private after update of private_to on public.money_bills for each row execute function public.after_money_private();
+create trigger money_accounts_private after update on public.money_accounts for each row execute function public.after_money_private();
+create trigger money_pots_private after update on public.money_pots for each row execute function public.after_money_private();
+create trigger money_holdings_private after update on public.money_holdings for each row execute function public.after_money_private();
+create trigger money_bills_private after update on public.money_bills for each row execute function public.after_money_private();
 
 -- ---------------------------------------------------------------- paying a bill moves it on; price rises are flagged
 
@@ -236,7 +272,8 @@ begin
   if new.on_date >= b.next_due - 10 then
     update public.money_bills set next_due = public.money_next_due(b.next_due, b.every) where id = b.id;
   end if;
-  if new.currency = b.currency and abs(new.amount - b.amount) >= 0.01 then
+  -- a private payment on a shared bill moves it on but never reveals its amount
+  if new.private_to is not distinct from b.private_to and new.currency = b.currency and abs(new.amount - b.amount) >= 0.01 then
     update public.money_bills set previous_amount = b.amount, amount = new.amount, amount_changed_on = new.on_date where id = b.id;
     if new.amount > b.amount then
       for v in select public.money_viewers(b.family_id, b.private_to) loop
@@ -411,6 +448,18 @@ begin
 end $$;
 revoke all on function public.money_file_ok(text) from public, anon;
 grant execute on function public.money_file_ok(text) to authenticated;
+
+-- the family's space: Board, Food and Money files together (one allowance for the whole family)
+create or replace function public.food_bytes_used(f uuid)
+returns bigint language sql stable security definer set search_path = '' as $$
+  select coalesce(sum((o.metadata ->> 'size')::bigint), 0)::bigint from storage.objects o
+  where o.bucket_id in ('board-media', 'food-files', 'money-files') and o.name like f::text || '/%'
+$$;
+create or replace function public.board_bytes_used(f uuid)
+returns bigint language sql stable security definer set search_path = '' as $$
+  select public.food_bytes_used(f)
+$$;
+revoke all on function public.food_bytes_used(uuid), public.board_bytes_used(uuid) from public, anon, authenticated;
 
 -- receipts count towards the family's storage allowance (the allowance functions stay private)
 create or replace function public.money_can_add_file()
