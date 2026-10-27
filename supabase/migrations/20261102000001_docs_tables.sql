@@ -73,7 +73,8 @@ create policy doc_folders_change on public.doc_folders for update to authenticat
   using (family_id = (select public.my_family_id()) and public.is_family_parent(family_id))
   with check (family_id = (select public.my_family_id()) and public.is_family_parent(family_id));
 
-create policy documents_read on public.documents for select to authenticated using (public.doc_ok(family_id, private_to));
+-- removed papers can't be read (they're deleted for good the next night)
+create policy documents_read on public.documents for select to authenticated using (deleted_at is null and public.doc_ok(family_id, private_to));
 create policy documents_add on public.documents for insert to authenticated with check (public.doc_ok(family_id, private_to));
 create policy documents_change on public.documents for update to authenticated
   using (public.doc_ok(family_id, private_to)) with check (public.doc_ok(family_id, private_to));
@@ -83,5 +84,6 @@ grant insert (family_id, name, emoji, position) on public.doc_folders to authent
 grant update (name, emoji, position, archived_at) on public.doc_folders to authenticated;
 grant insert (family_id, folder_id, title, person_id, pages, expires_on, remind_days, where_kept, ref, phone, price, notes, private_to)
   on public.documents to authenticated;
-grant update (folder_id, title, person_id, pages, expires_on, remind_days, where_kept, ref, phone, price, notes, deleted_at)
+-- removing goes through doc_remove (a removed paper can't be read, so it can't be updated directly)
+grant update (folder_id, title, person_id, pages, expires_on, remind_days, where_kept, ref, phone, price, notes)
   on public.documents to authenticated;

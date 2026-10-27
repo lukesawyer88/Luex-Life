@@ -11,4 +11,4 @@ begin
 end $$;
 
 select cron.schedule('luex-docs-reminders', '23 * * * *', $job$ select public.queue_doc_reminders(); $job$);
-select cron.schedule('luex-docs-tidy', '29 3 * * *', $job$ select public.doc_tidy_sends(); $job$);
+select cron.schedule('luex-docs-tidy', '29 3 * * *', $job$ select public.doc_tidy_sends(); select public.doc_tidy_removed(); $job$);

@@ -44,3 +44,8 @@ Agreed 27 Oct 2026. Module 8 of 15 (grown-ups). Research: Trustworthy, FamilyVau
 ## Honest risks
 1. Papers are only as complete as what people add; the checklist helps.
 2. Phones keep the papers you choose to keep offline; if the phone is shared, those can be opened on it.
+
+## Build status (27 Oct 2026)
+Built and tested; not live yet (waiting for the owner's yes to apply the database changes, then the page is added to the menu).
+
+Checks: 60 Documents database checks (every other module's checks still passing), 69 one-screen checks (two parents, a child and a grandparent at phone, tablet and laptop size), 30 journey tests (adding a passport with a photo and a PDF, "just mine", a grandparent's own paper, search, running out, the checklist, taking out a page, renaming a folder, the zip download, opening a kept paper with no signal, reminders, a child kept out). An independent security review found no way for the wrong person to see papers, and 9 smaller problems. 8 are fixed and tested: kept papers are now forgotten however someone is signed out, and each person's are kept apart; a paper about someone who has left can still be changed; removed papers can't be read and are deleted for good the next night; file names are checked strictly; a page belongs to one paper only; the checklist no longer ticks the wrong item; the zip says if any page was missed and is safe to open in a spreadsheet; a last reminder comes a week before. Still open: files left behind by someone who has left the household, or by a save that was cut off, still count towards the household's space.

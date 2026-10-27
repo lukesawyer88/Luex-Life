@@ -46,7 +46,7 @@ begin
     where (now() at time zone z)::time between '08:05' and '23:30' limit 1;
   perform pg_temp.sys(); update public.families set timezone = tz where id = fa;
   today := (now() at time zone tz)::date;
-  sp := fa || '/docs/s/passport-1.jpg'; gp := fa || '/docs/p/' || gran || '/payslip.pdf'; ap := fa || '/docs/p/' || ann || '/diary.jpg';
+  sp := fa || '/docs/s/' || gen_random_uuid() || '.jpg'; gp := fa || '/docs/p/' || gran || '/' || gen_random_uuid() || '.pdf'; ap := fa || '/docs/p/' || ann || '/' || gen_random_uuid() || '.jpg';
 
   -- ===== the starter folders
   perform pg_temp.act(ua, 'ann@test.dev');
@@ -87,7 +87,7 @@ begin
     perform pg_temp.chk(false, 'a household paper used a private page');
   exception when others then perform pg_temp.chk(true, ''); end;
   begin
-    insert into public.documents (family_id, title, pages) values (fa, 'Escape', array[fa || '/docs/s/../../x.jpg']);
+    insert into public.documents (family_id, title, pages) values (fa, 'Escape', array[fa || '/docs/s/../../' || gen_random_uuid() || '.jpg']);
     perform pg_temp.chk(false, 'a page path with .. was saved');
   exception when others then perform pg_temp.chk(true, ''); end;
   begin
@@ -153,12 +153,25 @@ begin
     perform pg_temp.chk(false, 'a child added a paper');
   exception when others then perform pg_temp.chk(true, ''); end;
 
-  -- ===== bin
+  -- ===== a page belongs to one paper
   perform pg_temp.act(ua, 'ann@test.dev');
-  update public.documents set deleted_at = '2000-01-01' where id = d1;
-  perform pg_temp.chk((select deleted_at from public.documents where id = d1) > now() - interval '1 minute', 'binning uses the real time');
-  update public.documents set deleted_at = null where id = d1;
-  perform pg_temp.chk((select deleted_at from public.documents where id = d1) is null, 'a binned paper is put back');
+  begin
+    insert into public.documents (family_id, title, pages) values (fa, 'Copy', array[sp]);
+    perform pg_temp.chk(false, 'two papers shared a page');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  begin
+    insert into public.documents (family_id, title, pages) values (fa, 'Twice', array[fa || '/docs/s/x.jpg', fa || '/docs/s/x.jpg']);
+    perform pg_temp.chk(false, 'a page was used twice');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.chk(not public.doc_file_ok(fa || '/docs/s/..', true), 'a dotted file name is allowed');
+
+  -- ===== someone who leaves: their papers can still be changed
+  perform pg_temp.sys(); update public.family_members set archived_at = now() where id = kid;
+  perform pg_temp.act(ua, 'ann@test.dev');
+  update public.documents set where_kept = 'Safe' where id = d1;
+  perform pg_temp.sys();
+  perform pg_temp.chk((select where_kept from public.documents where id = d1) = 'Safe', 'a paper about someone who left can still be changed');
+  update public.family_members set archived_at = null where id = kid;
 
   -- ===== expiry reminders
   perform pg_temp.sys();
@@ -174,9 +187,34 @@ begin
   update public.documents set expires_on = today + 3 where id = d1;
   perform public.queue_doc_reminders();
   perform pg_temp.chk((select count(*) from public.notifications where kind = 'docs' and member_id = ann and title like '%Passport%') = 2, 'a renewed paper is reminded again for its new date');
+  update public.documents set expires_on = today + 60 where id = d1;
+  perform public.queue_doc_reminders();
+  update public.documents set expires_on = today + 60 where id = d1;
+  perform pg_temp.chk((select count(*) from public.notifications where kind = 'docs' and member_id = ann and title like '%Passport%') = 3, 'the first reminder comes when it''s in range');
+  update public.documents set expires_on = today + 6 where id = d1;
+  update public.doc_sends set for_date = today + 6 where document_id = d1 and for_date = today + 60;
+  perform public.queue_doc_reminders(); perform public.queue_doc_reminders();
+  perform pg_temp.chk((select count(*) from public.notifications where kind = 'docs' and member_id = ann and title like '%Passport%') = 4, 'a last reminder comes a week before, once');
   update public.documents set deleted_at = now(), expires_on = today + 2 where id = d1;
   perform public.queue_doc_reminders();
-  perform pg_temp.chk((select count(*) from public.notifications where kind = 'docs' and member_id = ann and title like '%Passport%') = 2, 'a binned paper is reminded');
+  perform pg_temp.chk((select count(*) from public.notifications where kind = 'docs' and member_id = ann and title like '%Passport%') = 4, 'a removed paper is reminded');
+  perform pg_temp.act(ua, 'ann@test.dev');
+  perform public.doc_remove(d3);
+  begin
+    perform public.doc_remove(d3);
+    perform pg_temp.chk(false, 'a paper was removed twice');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.sys();
+  perform pg_temp.chk((select deleted_at from public.documents where id = d3) is not null, 'the owner removes their paper');
+  perform pg_temp.act(up, 'pat@test.dev');
+  perform pg_temp.chk(not exists (select 1 from public.documents where id = d1), 'a removed paper can still be read');
+  begin
+    perform public.doc_remove(d2);
+    perform pg_temp.chk(false, 'a parent removed another grown-up''s private paper');
+  exception when others then perform pg_temp.chk(true, ''); end;
+  perform pg_temp.sys(); update public.documents set deleted_at = now() - interval '2 days' where id = d1;
+  perform public.doc_tidy_removed();
+  perform pg_temp.chk(not exists (select 1 from public.documents where id = d1), 'a removed paper is deleted for good the next night');
 
   -- ===== other families and visitors
   perform pg_temp.act(ub, 'ben@test.dev');

@@ -1,6 +1,7 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { forgetPhoneCopies } from "@/lib/phone-copies";
 import { turnPushOff } from "@/lib/push";
 import { supabase } from "@/lib/supabase";
 
@@ -24,7 +25,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setLoading(false);
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      // signed out any other way (elsewhere, password changed, removed): forget papers kept on this phone
+      if (event === "SIGNED_OUT" || !next) void forgetPhoneCopies();
+      setSession(next);
+    });
     return () => {
       alive = false;
       data.subscription.unsubscribe();
@@ -44,6 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           /* still sign out */
         }
         await supabase.auth.signOut();
+        // papers kept on this phone (Documents) go too
+        await forgetPhoneCopies();
         try {
           window.localStorage.removeItem("luex.life.cache");
         } catch {

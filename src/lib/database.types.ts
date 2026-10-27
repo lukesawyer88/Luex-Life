@@ -189,7 +189,7 @@ export type Database = {
       documents: Table<
         { id: string; family_id: string; folder_id: string | null; title: string; person_id: string | null; pages: string[]; expires_on: string | null; remind_days: number; where_kept: string | null; ref: string | null; phone: string | null; price: number | null; notes: string; private_to: string | null; created_by: string | null; created_at: string; updated_at: string; deleted_at: string | null },
         { family_id: string; folder_id?: string | null; title: string; person_id?: string | null; pages?: string[]; expires_on?: string | null; remind_days?: number; where_kept?: string | null; ref?: string | null; phone?: string | null; price?: number | null; notes?: string; private_to?: string | null },
-        { folder_id?: string | null; title?: string; person_id?: string | null; pages?: string[]; expires_on?: string | null; remind_days?: number; where_kept?: string | null; ref?: string | null; phone?: string | null; price?: number | null; notes?: string; deleted_at?: string | null }
+        { folder_id?: string | null; title?: string; person_id?: string | null; pages?: string[]; expires_on?: string | null; remind_days?: number; where_kept?: string | null; ref?: string | null; phone?: string | null; price?: number | null; notes?: string }
       >;
       families: Table<
         { id: string; name: string; owner_id: string; signup_source: string; created_at: string; archived_at: string | null; timezone: string; calendar_prefs: Json; weather_place: string | null; weather_lat: number | null; weather_lon: number | null },
@@ -585,6 +585,7 @@ export type Database = {
       reward_advance: { Args: { p_child: string; p_amount: number; p_repay: number }; Returns: undefined };
       reward_cheer: { Args: { p_habit: string }; Returns: undefined };
       doc_setup: { Args: Record<string, never>; Returns: undefined };
+      doc_remove: { Args: { p_doc: string }; Returns: undefined };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };

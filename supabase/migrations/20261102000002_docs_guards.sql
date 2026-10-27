@@ -1,15 +1,18 @@
 -- Documents and Papers, part 2 of 3 (guards, the starter folders, expiry reminders, the files).
 
 -- a page must be a real file in the right folder: <family>/docs/s/<file> (household) or <family>/docs/p/<owner>/<file> ("just mine")
-create or replace function public.doc_pages_ok(f uuid, priv uuid, pages text[])
+-- and each page belongs to one paper only (removing a paper deletes its pages)
+create or replace function public.doc_pages_ok(f uuid, priv uuid, doc uuid, pages text[])
 returns boolean language sql stable security definer set search_path = '' as $$
-  select not exists (
+  select cardinality(pages) = (select count(distinct p) from unnest(pages) p)
+    and not exists (
     select 1 from unnest(pages) p
-    where p not like f::text || case when priv is null then '/docs/s/%' else '/docs/p/' || priv::text || '/%' end
-       or p like '%/../%'
-       or not exists (select 1 from storage.objects o where o.bucket_id = 'doc-files' and o.name = p))
+    where p !~ ('^' || f::text || case when priv is null then '/docs/s/' else '/docs/p/' || priv::text || '/' end
+                || '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|pdf)$')
+       or not exists (select 1 from storage.objects o where o.bucket_id = 'doc-files' and o.name = p)
+       or exists (select 1 from public.documents d where d.id <> doc and d.deleted_at is null and p = any (d.pages)))
 $$;
-revoke all on function public.doc_pages_ok(uuid, uuid, text[]) from public, anon, authenticated;
+revoke all on function public.doc_pages_ok(uuid, uuid, uuid, text[]) from public, anon, authenticated;
 
 create or replace function public.stamp_doc_row()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -36,12 +39,14 @@ begin
   if new.folder_id is not null and not exists (select 1 from public.doc_folders where id = new.folder_id and family_id = new.family_id) then
     raise exception 'That change is not allowed';
   end if;
-  if new.person_id is not null then
+  -- checked when it changes (someone who has since left keeps their old papers editable)
+  if new.person_id is not null and (tg_op = 'INSERT' or new.person_id is distinct from old.person_id) then
     if not public.members_in_family(new.family_id, array[new.person_id]) then raise exception 'Pick someone in this household'; end if;
     -- a private paper can only be about yourself
     if new.private_to is not null and new.person_id <> new.private_to then raise exception 'Private papers can only be about you'; end if;
   end if;
-  if (tg_op = 'INSERT' or new.pages is distinct from old.pages) and not public.doc_pages_ok(new.family_id, new.private_to, new.pages) then
+  if new.deleted_at is not null and tg_op = 'UPDATE' and old.deleted_at is not null then raise exception 'That change is not allowed'; end if;
+  if (tg_op = 'INSERT' or new.pages is distinct from old.pages) and not public.doc_pages_ok(new.family_id, new.private_to, new.id, new.pages) then
     raise exception 'Add the photo again';
   end if;
   return new;
@@ -49,6 +54,17 @@ end $$;
 revoke all on function public.stamp_doc_row() from public, anon, authenticated;
 create trigger doc_folders_stamp before insert or update on public.doc_folders for each row execute function public.stamp_doc_row();
 create trigger documents_stamp before insert or update on public.documents for each row execute function public.stamp_doc_row();
+
+-- removing a paper (the app deletes its pages; the row goes for good the next night)
+create or replace function public.doc_remove(p_doc uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  update public.documents set deleted_at = now(), updated_at = now()
+  where id = p_doc and deleted_at is null and public.doc_ok(family_id, private_to);
+  if not found then raise exception 'That change is not allowed'; end if;
+end $$;
+revoke all on function public.doc_remove(uuid) from public, anon;
+grant execute on function public.doc_remove(uuid) to authenticated;
 
 -- the first visit: everyday folders
 create or replace function public.doc_setup()
@@ -78,8 +94,15 @@ begin
     today := (now() at time zone f.tz)::date;
     for d in select * from public.documents where family_id = f.id and deleted_at is null and expires_on is not null
                and expires_on between today and today + remind_days loop
+      -- the first reminder is keyed by the date it runs out; a last one a week before (when the first came earlier)
       insert into public.doc_sends (document_id, for_date) values (d.id, d.expires_on) on conflict do nothing;
-      if not found then continue; end if;
+      if not found then
+        if d.remind_days <= 7 or d.expires_on - today > 7 then continue; end if;
+        insert into public.doc_sends (document_id, for_date) values (d.id, d.expires_on - 7) on conflict do nothing;
+        if not found then continue; end if;
+      elsif d.expires_on - today <= 7 then
+        insert into public.doc_sends (document_id, for_date) values (d.id, d.expires_on - 7) on conflict do nothing;
+      end if;
       select display_name into who from public.family_members where id = d.person_id;
       for v in select id from public.family_members where family_id = f.id and archived_at is null and user_id is not null
                  and ((d.private_to is null and role = 'parent') or id = d.private_to) loop
@@ -97,6 +120,13 @@ create or replace function public.doc_tidy_sends()
 returns void language sql security definer set search_path = '' as $$
   delete from public.doc_sends where for_date < current_date - 30
 $$;
+
+-- removed papers are deleted for good the next night (their pages were deleted when removed)
+create or replace function public.doc_tidy_removed()
+returns void language sql security definer set search_path = '' as $$
+  delete from public.documents where deleted_at < now() - interval '1 day'
+$$;
+revoke all on function public.doc_tidy_removed() from public, anon, authenticated;
 revoke all on function public.doc_tidy_sends() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------- the files (private bucket)
@@ -116,6 +146,7 @@ begin
   f := parts[1]::uuid;
   if f is distinct from public.my_family_id() or not public.is_family_adult(f) then return false; end if;
   if p_write and public.food_bytes_used(f) >= public.board_allowance() then return false; end if;
+  if p_name ~ '/\.|//' then return false; end if;
   if parts[3] = 's' and array_length(parts, 1) = 4 and parts[4] <> '' then return public.is_family_parent(f); end if;
   if parts[3] = 'p' and array_length(parts, 1) = 5 and parts[4] = public.my_member_id()::text and parts[5] <> '' then return true; end if;
   return false;
